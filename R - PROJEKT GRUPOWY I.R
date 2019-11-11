@@ -380,3 +380,180 @@ barplot(housing_balance_yes$skutecznosc,
  
 #niestety nie mo¿na wyci¹gn¹æ ¿adnego wniosku na temat wyró¿nienia szczególnej
 #grupy rozmówców na podstawie par loan-default
+
+#badanie wp³ywu typu kontaktu
+contact <- sqldf(
+  "select q1.kontakt as kontakt,
+          cast(q1.liczba_prob as real) as liczba_prob,
+          cast(q2.udane as real) as udane
+   from
+       (select [contact] as kontakt,
+              count(y) as liczba_prob
+       from basedata
+       group by kontakt
+       order by kontakt) q1
+  left join
+      (select [contact] as kontakt,
+              count(y) as udane
+       from basedata
+       where y = 'yes'
+       group by kontakt
+       order by kontakt) q2
+  on q1.kontakt = q2.kontakt"
+)
+contact$skutecznosc <- contact$udane / contact$liczba_prob
+
+par(mfrow=c(1,1))
+barplot(contact$skutecznosc, names.arg = contact$kontakt)
+#nie wygl¹da na to aby forma kontaktu mia³¹ wp³yw na wynik telemarketingu
+#pocz¹tkowo zmienna nie zostanie wykorzystana w modelu
+
+#analiza wp³ywu daty kontaktów
+day <- sqldf(
+  "select q1.dzien as dzien,
+          cast(q1.liczba_prob as real) as liczba_prob,
+          cast(q2.udane as real) as udane
+   from
+       (select [day] as dzien,
+              count(y) as liczba_prob
+       from basedata
+       group by dzien
+       order by dzien) q1
+  left join
+      (select [day] as dzien,
+              count(y) as udane
+       from basedata
+       where y = 'yes'
+       group by dzien
+       order by dzien) q2
+  on q1.dzien = q2.dzien"
+)
+day$skutecznosc <- day$udane / day$liczba_prob
+pie(day$skutecznosc, labels = day$dzien)
+#1, 14, 24 i 30 dzieñ miesi¹ca wyró¿niaj¹ siê wiêksz¹ skutecznoœci¹ telemarketingu
+#mo¿ê to byæ zwi¹zane z cyklem wyp³acania wynagrodzeñ
+month <- sqldf(
+  "select q1.miesiac as miesiac,
+          cast(q1.liczba_prob as real) as liczba_prob,
+          cast(q2.udane as real) as udane
+   from
+       (select [month] as miesiac,
+              count(y) as liczba_prob
+       from basedata
+       group by miesiac
+       order by miesiac) q1
+  left join
+      (select [month] as miesiac,
+              count(y) as udane
+       from basedata
+       where y = 'yes'
+       group by miesiac
+       order by miesiac) q2
+  on q1.miesiac = q2.miesiac"
+)
+month$skutecznosc <- month$udane / month$liczba_prob
+pie(month$skutecznosc, labels = day$dzien)
+#skutecznoœæ jest zdecydowanie wiêksza na prze³omie roku: listopad, grudzieñ styczeñ
+#byæ mo¿e terminy sp³at czegoœ, wydatki œwi¹teczne
+#du¿a skutecznoœæ w marcu: byæ mo¿e po¿yczki zwi¹zane z karnawa³em (ja bym nie bra³, ale kto wie)
+#du¿a skutecznoœæ w sierpniu: byæ mo¿e po¿yczki na wakacje, urlopy
+
+day_month_yes <- sqldf(
+  "select month as miesiac,
+          day as dzien,
+          count(y) as liczba_udanych
+   from basedata
+   where y = 'yes'
+   group by miesiac,
+            dzien
+   order by miesiac,
+            dzien
+   "
+)
+day_month_yes <- sqldf(
+  "select t1.miesiac,
+          t1.dzien,
+          t1.liczba_udanych,
+          t2.liczba_prob
+   from day_month_yes as t1
+   left join (
+        select month as miesiac,
+               day as dzien,
+               count(y) as liczba_prob
+        from basedata
+        group by miesiac,
+                 dzien
+   )as t2
+   on t1.dzien = t2.dzien and t1.miesiac = t2.miesiac
+  "
+)
+day_month_yes$skutecznosc <- day_month_yes$liczba_udanych / day_month_yes$liczba_prob
+
+#tych ró¿nych dni jest du¿o, wiêc raport bêdzie w postaci selecta
+#sprawdzamy dni, dla których kontaktów by³o conajmniej 15 i skutecznosc >= 10%
+sqldf(
+  "select *
+   from day_month_yes
+   where liczba_prob >= 15
+         and skutecznosc >= .1
+   order by skutecznosc desc"
+)
+sqldf(
+  "select *
+   from day_month_yes
+   where liczba_prob >= 15
+         and skutecznosc <= .05
+   order by skutecznosc asc"
+)
+#istniej¹ dni które wyró¿niaj¹ siê wysok¹ skutecznoœci¹ i takie dla których skutecznoœæ jest znikoma.
+#terminy kontaktu jak najbardziej zostan¹ wziête do modelu, najwy¿ej zostan¹ wyprune'owane
+
+#analiza wp³ywu czasu trwania ostatniej rozmowy
+par(mfrow=c(1,2))
+hist(basedata$duration[basedata$y == 'no'], xlab = "D³ugoœæ rozmowy w sekundach",
+     ylab = "Liczba odmów")
+hist(basedata$duration[basedata$y == 'yes'], xlab = "D³ugoœæ rozmowy w sekundach",
+     ylab = "Liczba zgód")
+
+#widaæ, ¿e w przypadku wziêcia po¿yczki rozmowy z konsultantem by³y d³u¿sze
+
+#analiza wp³ywu liczby kontaktów w ramach kampanii
+campaign <- sqldf(
+  "select campaign as liczba_kontaktow,
+          count(y) as liczba_prób
+   from basedata
+   group by liczba_kontaktow
+   order by liczba_kontaktow"
+)
+campaign <- sqldf(
+  "select t1.*,
+          t2.liczba_udanych
+   from campaign as t1
+   left join (select campaign as liczba_kontaktow,
+                     count(y) as liczba_udanych
+              from basedata
+              where y = 'yes'
+              group by liczba_kontaktow) as t2
+        on t1.liczba_kontaktow = t2.liczba_kontaktow
+   order by liczba_kontaktow
+")
+campaign$liczba_udanych[is.na(campaign$liczba_udanych) == 1] <- 0
+campaign$skutecznosc <- campaign$liczba_udanych / campaign$liczba_prób
+
+par(mfrow=c(1,1))
+plot(campaign$liczba_kontaktow[campaign$liczba_prób >= 15], 
+     campaign$skutecznosc[campaign$liczba_prób >= 15],
+     xlab = "Liczba kontaktóW w ramach kampanii marketingowej",
+     ylab = "Skutecznoœæ")
+
+#mo¿na dostrzec ma³¹ tendencjê, ¿e skutecznoœæ maleje wraz ze wzrostem liczby kontaktów
+
+#analiza wp³ywu czasu pomiêdzy, który up³yn¹³ od ostatniego kontaktu z poprzedniej kampanii
+#zbijamy przerwy na przedzia³y kategoryczne w celu ³atwiejszej analizy
+pdays <- sqldf(
+  "select pdays,
+          y
+   from basedata
+   where pdays <> -1"
+)
+par(mfrow=c(1,1))
