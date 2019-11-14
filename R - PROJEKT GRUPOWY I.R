@@ -2,6 +2,9 @@
 library(sqldf)
 library(data.table)
 library(plyr)
+library(rpart)
+library(rpart.plot)
+library(SDMTools)
 #za³adowanie bazowych danych
 basedata <- read.csv("E:/9sem/DM/zep/bank/bank.csv", row.names=NULL, sep=";", stringsAsFactors=FALSE)
 
@@ -94,7 +97,6 @@ barplot(job_y$skutecznosc, names.arg = rownames(job_y),
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na zawód")
 #zdecydowanie du¿a wiêksza skutecznoœæ dla studentów/uczniów i emerytów
-#ta zmienna te¿ bêdzie istotna w modelowaniu
 
 #analiza statusu matrymonialnego
 marital = sqldf(
@@ -125,7 +127,6 @@ barplot(marital$skutecznosc, names.arg = marital$stan,
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na status matrymonialny")
 #widaæ ¿e married rzadziej decyduj¹ siê na pozyczke
-#bierzemy stan cywilny do modelu jak najbardziej
 
 #analiza wp³ywu poziomu wykszta³cenia
 education <- sqldf(
@@ -156,7 +157,6 @@ barplot(education$skutecznosc, names.arg = education$wyksztalcenie,
         main = "Skutecznioœæ marketingu ze wzglêdu na wykszta³cenie")
 #ludzie z wykszta³ceniem wy¿szym czêœciej zgadzali siê na po¿yczkê
 #mo¿na siê by³o tego spodziewaæ, powinni mieæ wiêksza zdolnoœæ kredytowa
-#zmienna jaknajbardziej istotna przy tworzeniu modelu
 
 #analiza defaultu - posiadania kredytu, któego nie jest siê w stanie sp³aciæ
 default <- sqldf(
@@ -189,7 +189,6 @@ barplot(default$skutecznosc, names.arg = default$bankrut,
 #tu te¿ jestem zdziwiony, spodziewa³bym siê, ¿e ludzie którzy ju¿
 #wczeœniej zawiedli w sp³acaniu kredytu bêd¹ siê mniej decydowaæ
 #a tu jednak rozk³ada siê to bardzo identycznie
-#nie wykorzystujemy poczatkowo tego wejœcia w modelu
 
 #analiza zamo¿noœci
 #przetwarzamy i wizualizujemy bardziej rêcznie
@@ -250,7 +249,6 @@ barplot(balance_all$liczba_prob, names.arg = balance_all$balance,
 #warto zauwazyæ du¿¹ skutecznoœæ dla ludzi z zyskiem 3000 - 5000 euro rocznie
 #prawdopodobnie ludzie Ci bior¹ pozyczki na np rozwój swoich dzia³anoœci gospodarczych
 #lub maj¹ du¿¹ zdolnoœc kredytow¹ siê kupuj¹ sobie mieszkania/samochody
-#zmienna jak najbardziej istotna i wziêta do modelu
 
 #analiza posiadania obecnie kredytu hipotecznego
 housing <- sqldf(
@@ -335,7 +333,6 @@ barplot(housing_balance_yes$skutecznosc,
 #i nieposiadaj¹cy kredytów hipotecznych
 #drug¹ klas¹ chêtnych klientów s¹ klienci o niskim bilansie rocznym
 #nie posiadaj¹cych hipoteki - mo¿ê w³aœnie im j¹ wcisneli?
-#naturalnie weŸmiemy do modelu
 
 #sprawdzenie wp³ywu posiadania po¿yczki
 loan <- sqldf(
@@ -426,7 +423,6 @@ barplot(contact$skutecznosc, names.arg = contact$kontakt,
         ylab = "Skutecznoœæ marketingu", 
         main = "Skutecznoœæ marketingu ze wzglêdu na formê kontaktu")
 #nie wygl¹da na to aby forma kontaktu mia³¹ wp³yw na wynik telemarketingu
-#pocz¹tkowo zmienna nie zostanie wykorzystana w modelu
 
 #analiza wp³ywu daty kontaktów
 day <- sqldf(
@@ -551,7 +547,6 @@ pie(job_month$liczba_wynikow[job_month$miesiac == 'oct'],
     main = "Rozk³ad zawodów ludzi bior¹cych po¿yczki w paŸdzierniku")
 #okazuje siê ¿e strza³ ¿e brane s¹ po¿yczki studenckie by³ nieuzasadniony
 #wiêkszoœci¹ w obu przypadkach s¹ ludzie pracujacy przy zarz¹dzaniu
-#terminy kontaktu jak najbardziej zostan¹ wziête do modelu, najwy¿ej zostan¹ wyprune'owane
 
 #analiza wp³ywu czasu trwania ostatniej rozmowy
 par(mfrow=c(1,2))
@@ -743,3 +738,57 @@ plot(prev$liczba_kampanii, prev$liczba_prób,
 #a im wiêcej ich przebyli tym wiêksza skutecznoœæ marketingu
 #dla wiekszych liczb kampanii mamy ma³o prób, ale raczej spodziewalibyœmy siê, ¿e nie skutkuj¹
 #i w³asnie dlatego nie by³y podejmowane
+
+#podzia³ danych na treningowe, walidacyjne i testowe
+#aby dane mog³by byæ reprezentatywne poszeregujemy dany i wybierzemy zbiory okresowo
+#w sekwencji treningowy - walidacyjny - treningowy - testowy
+#ustawiamy dane pokolei wed³ug kryteriów najpierw kategorycznych, potem liczbowych
+#kolejnosc sortowania: y, poutcome, education, job, marital, housing, loan, default, contact, balance, age
+#previous, campaing, pdays, day, month. W 1 kolejnosci zmienne mo¿e bardziej istotne
+basedata_sorted <- sqldf(
+  "select * from basedata
+   order by y, poutcome, education, job, marital, housing, loan,
+            [default], contact, balance, age, previous, campaign, pdays, day, month"
+)
+
+indices <- 1:length(basedata_sorted[, 1])
+train_indices <- indices %% 2 == 1
+val_indices <- indices %% 4 == 2
+test_indices <- indices %% 4 == 0
+
+train_data <- basedata[train_indices,]
+val_data <- basedata[val_indices,]
+test_data <- basedata[test_indices,]
+
+#stworzenie domyœlnego drzewa klasyfikuj¹cego
+model1 <- rpart(y ~., train_data, method = 'class')
+windows()
+rpart.plot(model1)
+text(model1)
+
+#opis drzewa bêdzie w sprawozdaniu
+#analiza drzewa
+#wyniki na zbiorze ucz¹cym i testowym
+
+
+prediction1 <- predict(model1, train_data, type = "class")
+mean(prediction1 == train_data$y)
+train_an <- train_data$y
+train_an[train_an == 'no'] <- 0
+train_an[train_an == 'yes'] <- 1
+train_an <- as.numeric(train_an)
+confusion.matrix(train_an, as.numeric(prediction1) - 1, 0.5)
+#nawet na zbiorze ucz¹cym jest wiêcej false-negative'ów ni¿ yes-yes
+
+prediction2 <- predict(model1, test_data, type = 'class')
+mean(prediction2 == test_data$y)
+#90% skutecznoœci @@> a¿ za dobrze bym powiedzia³
+
+test_an <- test_data$y
+test_an[test_an == 'no'] <- 0
+test_an[test_an == 'yes'] <- 1
+test_an <- as.numeric(test_an)
+confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
+#widaæ, ¿e  jeœli chodzi o przyjêcie po¿yczki to model wiêcej nie trafi³ (false-negative) ni¿ trafi³
+#model swoj¹ skutecznoœæ nabija na odmowach, których jest pe³no,
+#ale nie jest przydatny do przewidywania wziêcia po¿yczki
