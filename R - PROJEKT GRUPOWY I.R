@@ -41,6 +41,16 @@ basedata <- read.csv("E:/9sem/DM/zep/bank/bank.csv", row.names=NULL, sep=";", st
 #warto zauwa¿yæ ¿e dane te s¹ ju¿ obrobione. Nie zawieraj¹ wartoœci pustych
 #a wartoœci nieznane, np zawodów rozmówców s¹ oznaczone
 
+y_quot <- sqldf(
+  "select y, count(y) as liczba_wynikow
+   from basedata
+   group by y"
+)
+y_quot
+#mamy 8 razy mniej zgód na po¿yczkê ni¿ odmów. Mo¿e byæ trochê problem z wytrenowaniem
+#drzwa przewiduj¹cego zgody
+#badanie wyp³ywu wieku ankietowanych
+
 age_no = sqldf("
 select age, count(y) as no
 from basedata
@@ -756,9 +766,9 @@ train_indices <- indices %% 2 == 1
 val_indices <- indices %% 4 == 2
 test_indices <- indices %% 4 == 0
 
-train_data <- basedata[train_indices,]
-val_data <- basedata[val_indices,]
-test_data <- basedata[test_indices,]
+train_data <- basedata_sorted[train_indices,]
+val_data <- basedata_sorted[val_indices,]
+test_data <- basedata_sorted[test_indices,]
 
 #stworzenie domyœlnego drzewa klasyfikuj¹cego
 model1 <- rpart(y ~., train_data, method = 'class')
@@ -792,3 +802,63 @@ confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 #widaæ, ¿e  jeœli chodzi o przyjêcie po¿yczki to model wiêcej nie trafi³ (false-negative) ni¿ trafi³
 #model swoj¹ skutecznoœæ nabija na odmowach, których jest pe³no,
 #ale nie jest przydatny do przewidywania wziêcia po¿yczki
+
+#domyœlne drzewo spisuje siê s³abo, nie ma zdolnoœci do przewidywania zgód
+#spodziewamy siê poprawiæ jakoœ klasyfikacji drzewami z dobieranymi parametrami
+#i z ustaleniem wiêkszych wag dla próbek o y = 'yes'
+
+#walidacja - analiza wyp³ywu hiperparametrów na jakoœæ klasyfikacji
+#wp³yw zwiêkszonych wag
+
+basedata_sorted <- sqldf(
+  "select * from basedata
+   order by y, poutcome, education, job, marital, housing, loan,
+            [default], contact, balance, age, previous, campaign, pdays, day, month"
+)
+
+indices <- 1:length(basedata_sorted[, 1])
+train_indices <- indices %% 2 == 1
+val_indices <- indices %% 4 == 2
+test_indices <- indices %% 4 == 0
+
+train_data <- basedata_sorted[train_indices,]
+val_data <- basedata_sorted[val_indices,]
+test_data <- basedata_sorted[test_indices,]
+
+val_an <- val_data$y
+val_an[val_an == 'no'] <- 0
+val_an[val_an == 'yes'] <- 1
+val_an <- as.numeric(test_an)
+
+weights <- 2:10
+cp_vec <- seq(0.0025, 0.1, by = 0.0025)
+
+best_i = 2
+best_j = 0.05
+best_score = 0
+for (i in weights) {
+  weights_vec <- rep(1, length(train_data[, 1]))
+  weights_vec[train_data$y == 'yes'] <- i
+  
+  for (j in cp_vec) {
+    model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
+                   control = rpart.control(cp=j))
+    prediction <- predict(model, val_data, type = 'class')
+    score <- mean(prediction == val_data$y)
+    
+    if (score > best_score) {
+      best_score <- score
+      best_i <- i
+      best_j <- j
+      best_model <- model
+    }
+    
+    print(sprintf("Wynik dla wag %i i cp=%f: %f", i, j, score))
+    print(sprintf("Macierz b³êdu dla wagi %i i cp=%f", i, j))
+    print(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
+  }
+}
+#analiza: zwiêkszenie wag dla y=true powoduje: spadek false-negativow, 
+#wzrost true-positivow kosztem znacznego wzrostu false-positive;ow
+#zmniejszenie cp zwiêksza liczbê nodo'w dzieki czemu drzewo jest bardziej dopasowane do danych
+#zwiêksza dok³adnoœæ dopasowania dla zbioru treningowego ale zwieksza ryzyko przeuczenia
