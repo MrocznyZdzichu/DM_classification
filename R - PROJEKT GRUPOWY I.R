@@ -6,8 +6,15 @@ library(rpart)
 library(rpart.plot)
 library(SDMTools)
 #za³adowanie bazowych danych
+
+
+
+#--------------------Zadanie 1--------------------
 basedata <- read.csv("E:/9sem/DM/zep/bank/bank.csv", row.names=NULL, sep=";", stringsAsFactors=FALSE)
 
+
+
+#--------------------Zadanie 2--------------------
 #opis danych i zagadnienia klasyfikacyjnego:
 #zaczerpniêty z MCI Machine Learning Repository:
 
@@ -41,6 +48,11 @@ basedata <- read.csv("E:/9sem/DM/zep/bank/bank.csv", row.names=NULL, sep=";", st
 #warto zauwa¿yæ ¿e dane te s¹ ju¿ obrobione. Nie zawieraj¹ wartoœci pustych
 #a wartoœci nieznane, np zawodów rozmówców s¹ oznaczone
 
+
+
+
+#--------------------Zadanie 3--------------------
+#analiza eksploracyjna
 y_quot <- sqldf(
   "select y, count(y) as liczba_wynikow
    from basedata
@@ -743,6 +755,8 @@ plot(prev$liczba_kampanii, prev$liczba_prób,
      xlab = "Liczba poprzedzaj¹cych kampanii",
      ylab = "Liczba bie¿¹cych prób przy x kampaniach poprzedzaj¹cych",
      main = "Rozk³ad liczby prób o danej liczbie kampanii poprzedzaj¹cych")
+
+
 #do 6. kampanii poprzedzaj¹cych mamy du¿o próbek, wiêc analiza mo¿e byæ wiarygodna
 #mo¿na zauwa¿yæ ma³¹ tendencjê wzrostow¹ - klieci s¹ lojalni, a przynajmniej Ci od 6 kampanii
 #a im wiêcej ich przebyli tym wiêksza skutecznoœæ marketingu
@@ -750,6 +764,7 @@ plot(prev$liczba_kampanii, prev$liczba_prób,
 #i w³asnie dlatego nie by³y podejmowane
 
 #podzia³ danych na treningowe, walidacyjne i testowe
+
 #aby dane mog³by byæ reprezentatywne poszeregujemy dany i wybierzemy zbiory okresowo
 #w sekwencji treningowy - walidacyjny - treningowy - testowy
 #ustawiamy dane pokolei wed³ug kryteriów najpierw kategorycznych, potem liczbowych
@@ -770,16 +785,19 @@ train_data <- basedata_sorted[train_indices,]
 val_data <- basedata_sorted[val_indices,]
 test_data <- basedata_sorted[test_indices,]
 
+#--------------------Zadanie 4--------------------
 #stworzenie domyœlnego drzewa klasyfikuj¹cego
 model1 <- rpart(y ~., train_data, method = 'class')
 windows()
 rpart.plot(model1)
 text(model1)
 
+
+
+#--------------------Zadanie 5--------------------
 #opis drzewa bêdzie w sprawozdaniu
 #analiza drzewa
 #wyniki na zbiorze ucz¹cym i testowym
-
 
 prediction1 <- predict(model1, train_data, type = "class")
 mean(prediction1 == train_data$y)
@@ -792,7 +810,7 @@ confusion.matrix(train_an, as.numeric(prediction1) - 1, 0.5)
 
 prediction2 <- predict(model1, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-#90% skutecznoœci @@> a¿ za dobrze bym powiedzia³
+#0.893% skutecznoœci @@> a¿ za dobrze bym powiedzia³
 
 test_an <- test_data$y
 test_an[test_an == 'no'] <- 0
@@ -807,6 +825,9 @@ confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 #spodziewamy siê poprawiæ jakoœ klasyfikacji drzewami z dobieranymi parametrami
 #i z ustaleniem wiêkszych wag dla próbek o y = 'yes'
 
+
+
+#--------------------Zadanie 6 i 7--------------------
 #walidacja - analiza wyp³ywu hiperparametrów na jakoœæ klasyfikacji
 #wp³yw zwiêkszonych wag
 
@@ -828,37 +849,174 @@ test_data <- basedata_sorted[test_indices,]
 val_an <- val_data$y
 val_an[val_an == 'no'] <- 0
 val_an[val_an == 'yes'] <- 1
-val_an <- as.numeric(test_an)
+val_an <- as.numeric(val_an)
 
-weights <- 2:10
-cp_vec <- seq(0.0025, 0.1, by = 0.0025)
 
-best_i = 2
-best_j = 0.05
+weight <- 1
+cp_vec <- seq(0, 0.03, by = 0.0025)
+minsplits <- seq(4, 20, by = 4)
+
+best_j = 0
 best_score = 0
-for (i in weights) {
-  weights_vec <- rep(1, length(train_data[, 1]))
-  weights_vec[train_data$y == 'yes'] <- i
+
+#sink('log.txt')
+weights_vec <- rep(1, length(train_data[, 1]))
+weights_vec[train_data$y == 'yes'] <- weight
   
-  for (j in cp_vec) {
+for (j in cp_vec) {
+  for (k in minsplits) {
+      
     model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
-                   control = rpart.control(cp=j))
+                   control = rpart.control(cp=j, minsplit = k))
+      
+    prediction_t <- predict(model, train_data, type = 'class')
     prediction <- predict(model, val_data, type = 'class')
+    score_t <- mean(prediction_t == train_data$y)
     score <- mean(prediction == val_data$y)
-    
+      
     if (score > best_score) {
       best_score <- score
-      best_i <- i
       best_j <- j
+      best_k <- k
       best_model <- model
     }
-    
-    print(sprintf("Wynik dla wag %i i cp=%f: %f", i, j, score))
-    print(sprintf("Macierz b³êdu dla wagi %i i cp=%f", i, j))
-    print(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
+      
+    cat(sprintf("Wynik na zbiorze treningowym dla wag %i, cp=%f i minsplit=%i: %f\n", weight, j, k, score_t))
+    cat(sprintf("Wynik na zbiorze walidacyjnym dla wag %i, cp=%f i minsplit=%i: %f\n", weight, j, k, score))
+    cat(sprintf("Macierz b³êdu walidacji dla wagi %i i cp=%f\n", weight, j))
+    cat(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
+    cat("\n")
   }
 }
+sink()
 #analiza: zwiêkszenie wag dla y=true powoduje: spadek false-negativow, 
 #wzrost true-positivow kosztem znacznego wzrostu false-positive;ow
 #zmniejszenie cp zwiêksza liczbê nodo'w dzieki czemu drzewo jest bardziej dopasowane do danych
 #zwiêksza dok³adnoœæ dopasowania dla zbioru treningowego ale zwieksza ryzyko przeuczenia
+
+#najlepszy rezultat osi¹gniêto dla proporcji wag no - 1: yes - 1
+#i wspó³czynnika z³o¿onoœci cp = 0.02
+#wyniki na zbiorze testowym dla tego drzewa
+
+prediction <- predict(best_model, test_data, type = 'class')
+mean(prediction == test_data$y)
+
+#score = 0.8831 nieznacznie gorszy wynik na zbiorze testowym ni¿ poprzednio
+test_an <- test_data$y
+test_an[test_an == 'no'] <- 0
+test_an[test_an == 'yes'] <- 1
+test_an <- as.numeric(test_an)
+confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
+#nadal skutecnzoœæ wynika z par 0-0. Przy wskazaniu yes model ma poni¿ej 50% skutecznoœci
+#nadal ma wiêcej false-positive'ow niz wskazañ poprawnych yes-yes
+
+windows()
+rpart.plot(best_model)
+#drzewo ma prostsz¹ strukturê, wiêc prawdopodobnie dla nowych danych model ten móg³by byæ lepszy
+#spróbujemy wymusiæ wiêksze wagi dla yes
+
+weight <- 2
+cp_vec <- seq(0, 0.03, by = 0.0025)
+minsplits <- seq(4, 20, by = 4)
+
+best_i2 = 0
+best_j2 = 0
+best_score2 = 0
+
+#sink('log.txt')
+weights_vec <- rep(1, length(train_data[, 1]))
+weights_vec[train_data$y == 'yes'] <- weight
+  
+for (j in cp_vec) {
+  for (k in minsplits) {
+      
+    model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
+                     control = rpart.control(cp=j, minsplit = k))
+      
+    prediction_t <- predict(model, train_data, type = 'class')
+    prediction <- predict(model, val_data, type = 'class')
+    score_t <- mean(prediction_t == train_data$y)
+    score <- mean(prediction == val_data$y)
+      
+    if (score > best_score2) {
+      best_score2 <- score
+      best_j2 <- j
+      best_k2 <- k
+      best_model2 <- model
+    }
+      
+    cat(sprintf("Wynik na zbiorze treningowym dla wag %i, cp=%f i minsplit=%i: %f\n", weight, j, k, score_t))
+    cat(sprintf("Wynik na zbiorze walidacyjnym dla wag %i, cp=%f i minsplit=%i: %f\n", weight, j, k, score))
+    cat(sprintf("Macierz b³êdu walidacji dla wagi %i i cp=%f\n", weight, j))
+    cat(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
+    cat("\n")
+  }
+}
+#sink()
+
+prediction <- predict(best_model2, test_data, type = 'class')
+mean(prediction == test_data$y)
+
+#score = 0.892 - mamy minimaln¹ poprawê :)
+test_an <- test_data$y
+test_an[test_an == 'no'] <- 0
+test_an[test_an == 'yes'] <- 1
+test_an <- as.numeric(test_an)
+confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
+#nadal skutecnzoœæ wynika z par 0-0. Przy wskazaniu yes model ma poni¿ej 50% skutecznoœci
+#nadal ma wiêcej false-positive'ow niz wskazañ poprawnych yes-yes
+
+windows()
+rpart.plot(best_model)
+#drzewo ma prostsz¹ strukturê, wiêc prawdopodobnie dla nowych danych model ten móg³by byæ lepszy
+#spróbujemy wymusiæ wiêksze wagi dla yes
+
+
+
+
+#--------------------Zadanie 8--------------------
+#optymalne drzewo metod¹ x-validacji
+#najpierw w pe³ni rozbudowane drzewo:
+weight <- 2
+weights_vec <- rep(1, length(train_data[, 1]))
+weights_vec[train_data$y == 'yes'] <- weight
+#w pe³ni rozroœniête drzewo
+model_3 <- rpart(y~., train_data, weights = weights_vec, 
+                 method = 'class', control = rpart.control(minsplit = 4, cp = 0))
+model_3
+windows()
+rpart.plot(model_3)
+
+#0.849 dla drzewa mocno rozbudowanego
+prediction <- predict(model_3, test_data, type = 'class')
+mean(prediction == test_data$y)
+
+#score = 0.892 - mamy minimaln¹ poprawê :)
+test_an <- test_data$y
+test_an[test_an == 'no'] <- 0
+test_an[test_an == 'yes'] <- 1
+test_an <- as.numeric(test_an)
+confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
+
+printcp(model_3)
+par(mfrow=c(1, 1))
+plotcp(model_3)
+#najmniejszy b³¹d standaryzowany mamy przy cp = 0.02011494
+
+model_prune <- prune(model_3, cp = 0.02011494)
+windows()
+rpart.plot(model_prune)
+
+prediction <- predict(model_prune, test_data, type = 'class')
+mean(prediction == test_data$y)
+
+#score = 0.881 lepszy wynik ni¿ dla drzewa giganta - lepsza generalizacja
+#tym nie mniej wynik jest gorszy od moich for-loopow >.<
+
+test_an <- test_data$y
+test_an[test_an == 'no'] <- 0
+test_an[test_an == 'yes'] <- 1
+test_an <- as.numeric(test_an)
+confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
+
+#opis wyników i wnioski bêd¹ w sprawozdaniu
