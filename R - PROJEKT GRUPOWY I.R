@@ -5,6 +5,7 @@ library(plyr)
 library(rpart)
 library(rpart.plot)
 library(SDMTools)
+library(GA)
 #za³adowanie bazowych danych
 
 
@@ -1020,3 +1021,48 @@ test_an <- as.numeric(test_an)
 confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
 
 #opis wyników i wnioski bêd¹ w sprawozdaniu
+
+
+#test optymalizacji struktury drzewa przy pomocy algorytmu genetycznego
+basedata_sorted <- sqldf(
+  "select * from basedata
+   order by y, poutcome, education, job, marital, housing, loan,
+            [default], contact, balance, age, previous, campaign, pdays, day, month"
+)
+
+indices <- 1:length(basedata_sorted[, 1])
+train_indices <- indices %% 2 == 1
+val_indices <- indices %% 4 == 2
+test_indices <- indices %% 4 == 0
+
+train_data <- basedata_sorted[train_indices,]
+val_data <- basedata_sorted[val_indices,]
+test_data <- basedata_sorted[test_indices,]
+
+fit_fun <- function(weight, minsplit_val, cp_val) {
+  weights_vec <- rep(1, length(train_data[, 1]))
+  weights_vec[train_data$y == 'yes'] <- weight
+  
+  model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
+                 control = rpart.control(cp=cp_val, minsplit = minsplit_val))
+  
+  prediction <- predict(model, val_data, type = 'class')
+  score1 = 0 #premia za TP
+  for (i in 1:length(val_data[, 1])) {
+    if (prediction[i] == 'yes' & val_data[i, 'y'] == 'yes') {
+      score1 = score1 + 1
+    }
+  }
+  score2 = mean(prediction == val_data$y)
+  score = score2 + 0.025*score1
+  return(score)
+}
+
+opt <- ga(type = "real-valued", 
+          fitness = function(x) fit_fun(x[1], x[2], x[3]), 
+          lower = c(1, 1, 0), upper = c(8, 20, 0.1),
+          popSize = 20, pcrossover = 0.8, pmutation = 0.5,
+          elitism = 1, run = 5, seed = Sys.time())
+summary(opt)
+fit_fun(5.9, 14, 0.07)
+fit_fun2(5.9, 14, 0.07)
