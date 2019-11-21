@@ -1047,22 +1047,84 @@ fit_fun <- function(weight, minsplit_val, cp_val) {
                  control = rpart.control(cp=cp_val, minsplit = minsplit_val))
   
   prediction <- predict(model, val_data, type = 'class')
-  score1 = 0 #premia za TP
+  score1 = 0 #TP
   for (i in 1:length(val_data[, 1])) {
     if (prediction[i] == 'yes' & val_data[i, 'y'] == 'yes') {
       score1 = score1 + 1
     }
   }
+  score0 = 0 #FP
+  for (i in 1:length(val_data[, 1])) {
+    if (prediction[i] == 'yes' & val_data[i, 'y'] == 'no') {
+      score0 = score0 + 1
+    }
+  }
+  score3 = 0 #FN
+  for (i in 1:length(val_data[, 1])) {
+    if (prediction[i] == 'no' & val_data[i, 'y'] == 'yes') {
+      score3 = score3 + 1
+    }
+  }
   score2 = mean(prediction == val_data$y)
-  score = score2 + 0.025*score1
+  score = score2 + 0.05*(score1 - score0 - score3)
   return(score)
 }
 
+fit_fun_verbose <- function(weight, minsplit_val, cp_val) {
+  weights_vec <- rep(1, length(train_data[, 1]))
+  weights_vec[train_data$y == 'yes'] <- weight
+  
+  model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
+                 control = rpart.control(cp=cp_val, minsplit = minsplit_val))
+  
+  prediction <- predict(model, val_data, type = 'class')
+  score1 = 0 #TP
+  for (i in 1:length(val_data[, 1])) {
+    if (prediction[i] == 'yes' & val_data[i, 'y'] == 'yes') {
+      score1 = score1 + 1
+    }
+  }
+  score0 = 0 #FP
+  for (i in 1:length(val_data[, 1])) {
+    if (prediction[i] == 'yes' & val_data[i, 'y'] == 'no') {
+      score0 = score0 + 1
+    }
+  }
+  score3 = 0 #FN
+  for (i in 1:length(val_data[, 1])) {
+    if (prediction[i] == 'no' & val_data[i, 'y'] == 'yes') {
+      score3 = score3 + 1
+    }
+  }
+  score2 = mean(prediction == val_data$y)
+  score = score2 + 0.05*(score1 - score0 - score3)
+
+  return(model)
+}
 opt <- ga(type = "real-valued", 
           fitness = function(x) fit_fun(x[1], x[2], x[3]), 
-          lower = c(1, 1, 0), upper = c(8, 20, 0.1),
-          popSize = 20, pcrossover = 0.8, pmutation = 0.5,
-          elitism = 1, run = 5, seed = Sys.time())
+          lower = c(1, 1, 0), 
+          upper = c(8, 8, 0.1),
+          popSize = 20, 
+          pcrossover = 0.8, 
+          pmutation = 0.2,
+          elitism = 0, 
+          run = 20, 
+          seed = Sys.time())
 summary(opt)
-fit_fun(5.9, 14, 0.07)
-fit_fun2(5.9, 14, 0.07)
+
+model <- fit_fun_verbose(2.16, 5.1, 0.079)
+windows()
+rpart.plot(model)
+
+prediction <- predict(model, test_data, type = 'class')
+mean(prediction == test_data$y)
+
+#score = 0.881 lepszy wynik ni¿ dla drzewa giganta - lepsza generalizacja
+#tym nie mniej wynik jest gorszy od moich for-loopow >.<
+
+test_an <- test_data$y
+test_an[test_an == 'no'] <- 0
+test_an[test_an == 'yes'] <- 1
+test_an <- as.numeric(test_an)
+confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
