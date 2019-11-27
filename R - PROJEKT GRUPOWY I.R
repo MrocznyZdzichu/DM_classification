@@ -1,4 +1,5 @@
 #za³adowanie potrzebnych zale¿noœci
+setwd("E:/9sem/DM/zep/repo")
 library(sqldf)
 library(data.table)
 library(plyr)
@@ -83,6 +84,7 @@ from basedata
 group by age
 order by age")
 
+windows()
 par(mfrow = c(1,3))
 plot(age_no$age, age_no$no, xlab = "Wiek",
      ylab = "Liczba odmów", main = "Rozk³ad wieku odmawiaj¹cych")
@@ -114,6 +116,7 @@ order by job")
 job_y <- data.frame(row.names = job_yes$job)
 job_y$skutecznosc <- job_yes$yes/(job_yes$yes + job_no$no)
 
+windows()
 par(mfrow = c(1,1))
 barplot(job_y$skutecznosc, names.arg = rownames(job_y), 
         ylab = "Skutecznoœæ marketingu",
@@ -144,6 +147,7 @@ marital = sqldf(
 #robiê w ten sposób bo backend od RSqLite nie radzi sobie z konwersj¹
 marital$skutecznosc <- marital$udane / marital$liczba_prob
 
+windows()
 par(mfrow = c(1,1))
 barplot(marital$skutecznosc, names.arg = marital$stan, 
         ylab = "Skutecznoœæ marketingu",
@@ -173,6 +177,7 @@ education <- sqldf(
 
 education$skutecznosc <- education$udane / education$liczba_prob
 
+windows()
 par(mfrow = c(1,1))
 barplot(education$skutecznosc, names.arg = education$wyksztalcenie,
         ylab = "Skutecznioœæ marketingu",
@@ -203,6 +208,7 @@ default <- sqldf(
 
 default$skutecznosc <- default$udane / default$liczba_prob
 
+windows()
 par(mfrow = c(1,1))
 barplot(default$skutecznosc, names.arg = default$bankrut,
         ylab = "Skutecznoœæ marketingu",
@@ -256,6 +262,7 @@ balance_all <- sqldf(
 balance_all$liczba_zgod[is.na(balance_all$liczba_zgod) == 1] <- 0
 balance_all$skutecznosc <- balance_all$liczba_zgod / balance_all$liczba_prob
 
+windows()
 par(mfrow=c(1,2))
 barplot(balance_all$skutecznosc, names.arg = balance_all$balance,
         xlab = "Roczny zysk w euro", ylab = "Skutecznoœæ telemarketingu",
@@ -294,6 +301,7 @@ housing <- sqldf(
 )
 housing$skutecznosc <- housing$udane / housing$liczba_prob
 
+windows()
 par(mfrow = c(1,1))
 barplot(housing$skutecznosc, names.arg = housing$hipoteka,
         main = "Skutecznoœæ marketingu ze wzglêdu na posiadanie kredytu hipotecznego")
@@ -344,6 +352,8 @@ housing_balance_yes <- sqldf(
 housing_balance_yes$skutecznosc <- housing_balance_yes$`count(y)`/ 
                                    (housing_balance_yes$`count(y)`+ 
                                    housing_balance_no$`count(y)`)
+
+windows()
 par(mfrow = c(1, 1))
 barplot(housing_balance_yes$skutecznosc, 
         names.arg = paste(housing_balance_yes$housing, housing_balance_yes$balance_level, sep="-"),
@@ -378,6 +388,7 @@ loan <- sqldf(
 )
 loan$skutecznosc <- loan$udane / loan$liczba_prob
 
+windows()
 par(mfrow = c(1,1))
 barplot(loan$skutecznosc, names.arg = loan$pozyczka,
         ylab = "Skutecznoœæ marketingu",
@@ -409,6 +420,8 @@ loan_default_yes <- sqldf(
 loan_default_yes$skutecznosc <- loan_default_yes$liczba_wynikow/ 
   (loan_default_yes$liczba_wynikow + 
      loan_default_no$liczba_wynikow)
+
+windows()
 par(mfrow = c(1, 1))
 barplot(housing_balance_yes$skutecznosc, 
         names.arg = paste(housing_balance_yes$housing, housing_balance_yes$balance_level, sep="-"),
@@ -440,6 +453,7 @@ contact <- sqldf(
 )
 contact$skutecznosc <- contact$udane / contact$liczba_prob
 
+windows()
 par(mfrow=c(1,1))
 barplot(contact$skutecznosc, names.arg = contact$kontakt,
         ylab = "Skutecznoœæ marketingu", 
@@ -467,6 +481,8 @@ day <- sqldf(
   on q1.dzien = q2.dzien"
 )
 day$skutecznosc <- day$udane / day$liczba_prob
+
+windows()
 pie(day$skutecznosc, labels = day$dzien,
     main = "Skutecznoœæ marketingu w zale¿noœci od dnia miesi¹ca")
 #1, 14, 24 i 30 dzieñ miesi¹ca wyró¿niaj¹ siê wiêksz¹ skutecznoœci¹ telemarketingu
@@ -491,6 +507,8 @@ month <- sqldf(
        order by miesiac) q2
   on q1.miesiac = q2.miesiac"
 )
+
+windows()
 month$skutecznosc <- month$udane / month$liczba_prob
 pie(month$skutecznosc, labels = month$miesiac)
 #skutecznoœæ jest zdecydowanie wiêksza w marcu, wrzeœniu, paŸdzierniku i grudniu
@@ -560,6 +578,8 @@ job_month <- sqldf(
            and y = 'yes') t1
    group by miesiac, zawod"
 )
+
+windows()
 par(mfrow=c(1,2))
 pie(job_month$liczba_wynikow[job_month$miesiac == 'sep'], 
     labels = job_month$zawod[job_month$miesiac == 'sep'],
@@ -571,6 +591,8 @@ pie(job_month$liczba_wynikow[job_month$miesiac == 'oct'],
 #wiêkszoœci¹ w obu przypadkach s¹ ludzie pracujacy przy zarz¹dzaniu
 
 #analiza wp³ywu czasu trwania ostatniej rozmowy
+
+windows()
 par(mfrow=c(1,2))
 hist(basedata$duration[basedata$y == 'no'], xlab = "D³ugoœæ rozmowy w sekundach",
      ylab = "Liczba odmów", main = "Rozk³ad czasu trawnia rozmowy w razue odmowy")
@@ -604,6 +626,7 @@ campaign <- sqldf(
 campaign$liczba_udanych[is.na(campaign$liczba_udanych) == 1] <- 0
 campaign$skutecznosc <- campaign$liczba_udanych / campaign$liczba_prób
 
+windows()
 par(mfrow=c(1,1))
 plot(campaign$liczba_kontaktow[campaign$liczba_prób >= 15], 
      campaign$skutecznosc[campaign$liczba_prób >= 15],
@@ -623,6 +646,7 @@ pdays <- sqldf(
    where pdays <> -1"
 )
 
+windows()
 par(mfrow=c(1,2))
 hist(pdays$pdays[pdays$y == 'no'], 
      xlab = "liczba dni pomiedzy kampaniami marketingowymi",
@@ -677,7 +701,7 @@ changed <- sqldf(
          and y = 'yes'
          and pdays <> - 1"
 )
-#analizuj¹c tê tabelê rzuca siê w oczy ¿e: 
+#analizuj¹c tê tabelê w BROWSERZE rzuca siê w oczy ¿e: 
 #   prawie nikt z nich nie ma po¿yczki - loan = 'no'
 #   prawie ka¿dy kontakt by³ na komórkê 'cellular'
 #   nikt z nich nie ma utopionego kredytu
@@ -746,6 +770,8 @@ prev <- sqldf(
 ")
 prev$liczba_udanych[is.na(prev$liczba_udanych) == 1] <- 0
 prev$skutecznosc <- prev$liczba_udanych/prev$liczba_prób
+
+windows()
 par(mfrow=c(1,2))
 plot(prev$liczba_kampanii, prev$skutecznosc,
      xlab = "Liczba poprzedzaj¹cych kampanii",
@@ -851,172 +877,78 @@ val_an[val_an == 'no'] <- 0
 val_an[val_an == 'yes'] <- 1
 val_an <- as.numeric(val_an)
 
-
-weight <- 1
-cp_vec <- seq(0, 0.03, by = 0.0025)
-minsplits <- seq(4, 20, by = 4)
-
-best_j = 0
-best_score = 0
-
-#sink('log.txt')
-weights_vec <- rep(1, length(train_data[, 1]))
-weights_vec[train_data$y == 'yes'] <- weight
-  
-for (j in cp_vec) {
-  for (k in minsplits) {
-      
-    model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
-                   control = rpart.control(cp=j, minsplit = k))
-      
-    prediction_t <- predict(model, train_data, type = 'class')
-    prediction <- predict(model, val_data, type = 'class')
-    score_t <- mean(prediction_t == train_data$y)
-    score <- mean(prediction == val_data$y)
-      
-    if (score > best_score) {
-      best_score <- score
-      best_j <- j
-      best_k <- k
-      best_model <- model
-    }
-      
-    cat(sprintf("Wynik na zbiorze treningowym dla wag %i, cp=%f i minsplit=%i: %f\n", weight, j, k, score_t))
-    cat(sprintf("Wynik na zbiorze walidacyjnym dla wag %i, cp=%f i minsplit=%i: %f\n", weight, j, k, score))
-    cat(sprintf("Macierz b³êdu walidacji dla wagi %i i cp=%f\n", weight, j))
-    cat(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
-    cat("\n")
-  }
-}
-sink()
-#analiza: zwiêkszenie wag dla y=true powoduje: spadek false-negativow, 
-#wzrost true-positivow kosztem znacznego wzrostu false-positive;ow
-#zmniejszenie cp zwiêksza liczbê nodo'w dzieki czemu drzewo jest bardziej dopasowane do danych
-#zwiêksza dok³adnoœæ dopasowania dla zbioru treningowego ale zwieksza ryzyko przeuczenia
-
-#najlepszy rezultat osi¹gniêto dla proporcji wag no - 1: yes - 1
-#i wspó³czynnika z³o¿onoœci cp = 0.02
-#wyniki na zbiorze testowym dla tego drzewa
-
-prediction <- predict(best_model, test_data, type = 'class')
-mean(prediction == test_data$y)
-
-#score = 0.8831 nieznacznie gorszy wynik na zbiorze testowym ni¿ poprzednio
 test_an <- test_data$y
 test_an[test_an == 'no'] <- 0
 test_an[test_an == 'yes'] <- 1
 test_an <- as.numeric(test_an)
-confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
-#nadal skutecnzoœæ wynika z par 0-0. Przy wskazaniu yes model ma poni¿ej 50% skutecznoœci
-#nadal ma wiêcej false-positive'ow niz wskazañ poprawnych yes-yes
 
-windows()
-rpart.plot(best_model)
-#drzewo ma prostsz¹ strukturê, wiêc prawdopodobnie dla nowych danych model ten móg³by byæ lepszy
-#spróbujemy wymusiæ wiêksze wagi dla yes
-
-weight <- 2
-cp_vec <- seq(0, 0.03, by = 0.0025)
-minsplits <- seq(4, 20, by = 4)
-
-best_i2 = 0
-best_j2 = 0
-best_score2 = 0
-
-#sink('log.txt')
-weights_vec <- rep(1, length(train_data[, 1]))
-weights_vec[train_data$y == 'yes'] <- weight
-  
-for (j in cp_vec) {
-  for (k in minsplits) {
+sink('logDiv4.txt')
+for (i in weights) {
+  for (j in cp_vec) {
+    for (k in minsplits) {
+      weights_vec <- rep(1, length(train_data[, 1]))
+      weights_vec[train_data$y == 'yes'] <- i
       
-    model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
+      model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
                      control = rpart.control(cp=j, minsplit = k))
       
-    prediction_t <- predict(model, train_data, type = 'class')
-    prediction <- predict(model, val_data, type = 'class')
-    score_t <- mean(prediction_t == train_data$y)
-    score <- mean(prediction == val_data$y)
+      prediction_t <- predict(model, train_data, type = 'class')
+      prediction <- predict(model, val_data, type = 'class')
+      score_t <- mean(prediction_t == train_data$y)
+      score0 <- mean(prediction == val_data$y)
       
-    if (score > best_score2) {
-      best_score2 <- score
-      best_j2 <- j
-      best_k2 <- k
-      best_model2 <- model
+      #wp³yw TP
+      score1 = 0 #TP
+      for (z in 1:length(val_data[, 1])) {
+        if (prediction[z] == 'yes' & val_data[z, 'y'] == 'yes') {
+          score1 = score1 + 1
+        }
+      }
+      score2 = 0 #FP
+      for (z in 1:length(val_data[, 1])) {
+        if (prediction[z] == 'yes' & val_data[z, 'y'] == 'no') {
+          score2 = score2 + 1
+        }
+      }
+      score = score0 + 0.01*(score1 - score2) + 0.005*score1 #premia za pewnoœc TP vs FP
+      
+      if (score > best_score) {
+        best_score <- score
+        best_i <- i
+        best_j <- j
+        best_k <- k
+        best_model <- model
+      }
+      
+      cat(sprintf("Wynik na zbiorze treningowym dla wag %f, cp=%f i minsplit=%i: %f\n", i, j, k, score_t))
+      cat(sprintf("Wynik na zbiorze walidacyjnym dla wag %f, cp=%f i minsplit=%i: %f\n", i, j, k, score))
+      cat(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
+      cat("\n")
     }
-      
-    cat(sprintf("Wynik na zbiorze treningowym dla wag %i, cp=%f i minsplit=%i: %f\n", weight, j, k, score_t))
-    cat(sprintf("Wynik na zbiorze walidacyjnym dla wag %i, cp=%f i minsplit=%i: %f\n", weight, j, k, score))
-    cat(sprintf("Macierz b³êdu walidacji dla wagi %i i cp=%f\n", weight, j))
-    cat(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
-    cat("\n")
   }
-}
-#sink()
+}  
+sink()
 
-prediction <- predict(best_model2, test_data, type = 'class')
-mean(prediction == test_data$y)
-
-#score = 0.892 - mamy minimaln¹ poprawê :)
-test_an <- test_data$y
-test_an[test_an == 'no'] <- 0
-test_an[test_an == 'yes'] <- 1
-test_an <- as.numeric(test_an)
-confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
-#nadal skutecnzoœæ wynika z par 0-0. Przy wskazaniu yes model ma poni¿ej 50% skutecznoœci
-#nadal ma wiêcej false-positive'ow niz wskazañ poprawnych yes-yes
-
-windows()
-rpart.plot(best_model)
-#drzewo ma prostsz¹ strukturê, wiêc prawdopodobnie dla nowych danych model ten móg³by byæ lepszy
-#spróbujemy wymusiæ wiêksze wagi dla yes
-
-
-
-
-#--------------------Zadanie 8--------------------
-#optymalne drzewo metod¹ x-validacji
-#najpierw w pe³ni rozbudowane drzewo:
-weight <- 2
 weights_vec <- rep(1, length(train_data[, 1]))
-weights_vec[train_data$y == 'yes'] <- weight
-#w pe³ni rozroœniête drzewo
-model_3 <- rpart(y~., train_data, weights = weights_vec, 
-                 method = 'class', control = rpart.control(minsplit = 4, cp = 0))
-model_3
+weights_vec[train_data$y == 'yes'] <- 1.5
+model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
+               control = rpart.control(cp=0.005, minsplit = 14))
+
+prediction2 <- predict(model, test_data, type = 'class')
+mean(prediction2 == test_data$y)
+confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
+
 windows()
-rpart.plot(model_3)
+rpart.plot(model)
 
-#0.849 dla drzewa mocno rozbudowanego
-prediction <- predict(model_3, test_data, type = 'class')
-mean(prediction == test_data$y)
-
-#score = 0.892 - mamy minimaln¹ poprawê :)
-test_an <- test_data$y
-test_an[test_an == 'no'] <- 0
-test_an[test_an == 'yes'] <- 1
-test_an <- as.numeric(test_an)
-confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
-
-printcp(model_3)
-par(mfrow=c(1, 1))
-plotcp(model_3)
-#najmniejszy b³¹d standaryzowany mamy przy cp = 0.02011494
-
-model_prune <- prune(model_3, cp = 0.02011494)
 windows()
-rpart.plot(model_prune)
+printcp(model)
 
-prediction <- predict(model_prune, test_data, type = 'class')
-mean(prediction == test_data$y)
+model <- prune(model, cp=0.019)
 
-#score = 0.881 lepszy wynik ni¿ dla drzewa giganta - lepsza generalizacja
-#tym nie mniej wynik jest gorszy od moich for-loopow >.<
+windows()
+rpart.plot(model)
 
-test_an <- test_data$y
-test_an[test_an == 'no'] <- 0
-test_an[test_an == 'yes'] <- 1
-test_an <- as.numeric(test_an)
-confusion.matrix(test_an, as.numeric(prediction) - 1, .5)
-
-#opis wyników i wnioski bêd¹ w sprawozdaniu
+prediction2 <- predict(model, test_data, type = 'class')
+mean(prediction2 == test_data$y)
+confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
