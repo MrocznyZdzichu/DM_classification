@@ -851,7 +851,7 @@ confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 #spodziewamy siê poprawiæ jakoœ klasyfikacji drzewami z dobieranymi parametrami
 #i z ustaleniem wiêkszych wag dla próbek o y = 'yes'
 
-
+#wwartosc funkcji celu w zadaniu optymalizacji: 0.893 + 0.01*(43-33) + 0.005*43 = 1.423
 
 #--------------------Zadanie 6 i 7--------------------
 #walidacja - analiza wyp³ywu hiperparametrów na jakoœæ klasyfikacji
@@ -882,6 +882,15 @@ test_an[test_an == 'no'] <- 0
 test_an[test_an == 'yes'] <- 1
 test_an <- as.numeric(test_an)
 
+weights <- seq(1, 2, by = 0.25)
+cp_vec <- seq(0.00, 0.02, by = 0.0025)
+minsplits <- seq(1, 22, by = 3)
+
+best_score <- 0
+best_i <- 0
+best_j <- 0
+best_k <- 0
+
 sink('logDiv4.txt')
 for (i in weights) {
   for (j in cp_vec) {
@@ -910,7 +919,7 @@ for (i in weights) {
           score2 = score2 + 1
         }
       }
-      score = score0 + 0.01*(score1 - score2) + 0.005*score1 #premia za pewnoœc TP vs FP
+      score = score0 + 0.01*(score1 - score2) + 0.01*score1 #premia za pewnoœc TP vs FP
       
       if (score > best_score) {
         best_score <- score
@@ -932,19 +941,20 @@ sink()
 weights_vec <- rep(1, length(train_data[, 1]))
 weights_vec[train_data$y == 'yes'] <- 1.5
 model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
-               control = rpart.control(cp=0.005, minsplit = 14))
+               control = rpart.control(cp=0.005, minsplit = 16))
 
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
 confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 
+#score = 1.189
+
 windows()
 rpart.plot(model)
 
-windows()
 printcp(model)
 
-model <- prune(model, cp=0.019)
+model <- prune(model, cp=0.019157)
 
 windows()
 rpart.plot(model)
@@ -952,3 +962,5 @@ rpart.plot(model)
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
 confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
+
+#score = 1.676
