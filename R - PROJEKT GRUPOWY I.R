@@ -152,7 +152,7 @@ par(mfrow = c(1,1))
 barplot(marital$skutecznosc, names.arg = marital$stan, 
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na status matrymonialny")
-#widaæ ¿e married rzadziej decyduj¹ siê na pozyczke
+#widaæ ¿e married rzadziej decyduj¹ siê na lokatê
 
 #analiza wp³ywu poziomu wykszta³cenia
 education <- sqldf(
@@ -182,8 +182,8 @@ par(mfrow = c(1,1))
 barplot(education$skutecznosc, names.arg = education$wyksztalcenie,
         ylab = "Skutecznioœæ marketingu",
         main = "Skutecznioœæ marketingu ze wzglêdu na wykszta³cenie")
-#ludzie z wykszta³ceniem wy¿szym czêœciej zgadzali siê na po¿yczkê
-#mo¿na siê by³o tego spodziewaæ, powinni mieæ wiêksza zdolnoœæ kredytowa
+#ludzie z wykszta³ceniem wy¿szym czêœciej zgadzali siê na lokatê
+#mo¿na siê by³o tego spodziewaæ, teoretycznie wiêcej zarabiaj¹ wiêc maj¹ co odk³adaæ
 
 #analiza defaultu - posiadania kredytu, któego nie jest siê w stanie sp³aciæ
 default <- sqldf(
@@ -214,9 +214,7 @@ barplot(default$skutecznosc, names.arg = default$bankrut,
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na kredyt niemo¿liwy do sp³acenia")
 
-#tu te¿ jestem zdziwiony, spodziewa³bym siê, ¿e ludzie którzy ju¿
-#wczeœniej zawiedli w sp³acaniu kredytu bêd¹ siê mniej decydowaæ
-#a tu jednak rozk³ada siê to bardzo identycznie
+#rozk³ada siê identywcznie, ale bardzo ma³o danych dla default = yes
 
 #analiza zamo¿noœci
 #przetwarzamy i wizualizujemy bardziej rêcznie
@@ -272,12 +270,8 @@ barplot(balance_all$liczba_prob, names.arg = balance_all$balance,
         main = "Rozk³ad prób marketingu ze wzglêdu na zysk roczny")
 
 #prób dla ludzi z olbrzymim zyskiem 10000+ jest malo dlatego s¹dzimy, ¿e du¿a skuecznoœæ dla nich jest przypadkowa
-#warto zwróciæ uwagê, ¿e jest du¿o prób dla ludzi z ma³¹ srat¹ lub zyskiem do 5 tysiêcy
-#warto zauwazyæ ¿e ludzie z ma³ym d³ugiem czeœciej decyduj¹ siê na po¿yczkê ni¿ ludzie
-#z minimalnym rocznym zyskiem 0-500 euro, prawdopodobnie próbuj¹ ratowaæ siê po¿yczkami
-#warto zauwazyæ du¿¹ skutecznoœæ dla ludzi z zyskiem 3000 - 5000 euro rocznie
-#prawdopodobnie ludzie Ci bior¹ pozyczki na np rozwój swoich dzia³anoœci gospodarczych
-#lub maj¹ du¿¹ zdolnoœc kredytow¹ siê kupuj¹ sobie mieszkania/samochody
+#warto zwróciæ uwagê, ¿e jest du¿o prób dla ludzi z ma³¹ strat¹ do 500 lub zyskiem do 4 tysiêcy
+#warto zauwazyæ du¿¹ skutecznoœæ dla ludzi z zyskiem 2000 - 4000 euro rocznie
 
 #analiza posiadania obecnie kredytu hipotecznego
 housing <- sqldf(
@@ -304,7 +298,8 @@ housing$skutecznosc <- housing$udane / housing$liczba_prob
 windows()
 par(mfrow = c(1,1))
 barplot(housing$skutecznosc, names.arg = housing$hipoteka,
-        main = "Skutecznoœæ marketingu ze wzglêdu na posiadanie kredytu hipotecznego")
+        main = "Skutecznoœæ marketingu ze wzglêdu na posiadanie kredytu hipotecznego",
+        ylab = "Skutecznoœc marketingu")
 #widaæ ¿e skutecznoœæ marketingu jest o wiele wiêksza w przypadku
 #rozmówcóW, którzy nie maj¹ na g³woie kredytu hipotecznego
 
@@ -363,8 +358,6 @@ barplot(housing_balance_yes$skutecznosc,
 #warto zwróciæ uwagê, ¿e chêtnymi klientami s¹ ludzie
 #o œrednim (w tym mid-low i mid-high) poziomie bilansu rocznego
 #i nieposiadaj¹cy kredytów hipotecznych
-#drug¹ klas¹ chêtnych klientów s¹ klienci o niskim bilansie rocznym
-#nie posiadaj¹cych hipoteki - mo¿ê w³aœnie im j¹ wcisneli?
 
 #sprawdzenie wp³ywu posiadania po¿yczki
 loan <- sqldf(
@@ -393,7 +386,7 @@ par(mfrow = c(1,1))
 barplot(loan$skutecznosc, names.arg = loan$pozyczka,
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na posiadanie po¿yczki")
-#nie ma niespodzianki, ¿e ludzie którzy obecnie nie maj¹ ¿adnej po¿yczki, bior¹ 1. chetniej
+#nie ma niespodzianki, ¿e ludzie którzy obecnie nie maj¹ ¿adnej po¿yczki, bior¹ lokatê chetniej
 
 #sprawdŸmy uwzgledniaj¹c niemo¿liwoœc sp³aty (defaulty)
 loan_default <- sqldf(
@@ -485,9 +478,13 @@ day$skutecznosc <- day$udane / day$liczba_prob
 windows()
 pie(day$skutecznosc, labels = day$dzien,
     main = "Skutecznoœæ marketingu w zale¿noœci od dnia miesi¹ca")
-#1, 14, 24 i 30 dzieñ miesi¹ca wyró¿niaj¹ siê wiêksz¹ skutecznoœci¹ telemarketingu
-#1 dnia by³o ma³o kontaktów, wiêc prognoza moze byæ zbyt optymistyczna
-#mo¿ê to byæ zwi¹zane z cyklem wyp³acania wynagrodzeñ
+
+sqldf(
+  "select * from day
+  where liczba_prob >= 100
+  order by skutecznosc desc"
+)
+#najwiêksz¹ skutecznoœci¹ przy przynajmniej 100 obserwacjach wyró¿ni³y siê dni 12, 30, 18 i 5
 month <- sqldf(
   "select q1.miesiac as miesiac,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -511,10 +508,12 @@ month <- sqldf(
 windows()
 month$skutecznosc <- month$udane / month$liczba_prob
 pie(month$skutecznosc, labels = month$miesiac)
-#skutecznoœæ jest zdecydowanie wiêksza w marcu, wrzeœniu, paŸdzierniku i grudniu
-#w grudniu mamy tylko 20 prób, wiêc to mo¿e byæ przyczyn¹ du¿ej skutecznoœci w tym miesi¹cy
-#du¿a skutecznoœæ w marcu: byæ mo¿e po¿yczki zwi¹zane z karnawa³em (ja bym nie bra³, ale kto wie)
-#du¿a skutecznoœæ we wrzeœniu i paŸdzierniku: powrót po urlopach, mo¿e kredyty studenckie
+
+sqldf(
+  "select * from month
+  where liczba_prob >= 100
+  order by skutecznosc desc"
+)
 
 day_month_yes <- sqldf(
   "select month as miesiac,
@@ -565,31 +564,6 @@ sqldf(
 )
 
 #istniej¹ dni które wyró¿niaj¹ siê wysok¹ skutecznoœci¹ i takie dla których skutecznoœæ jest znikoma.
-#sprawdzenie jak rozk³adaj¹ siê zawody ludzi bior¹cych po¿yczki we wrzeœniu i paŸdzierniku:
-job_month <- sqldf(
-  "select miesiac,
-          zawod,
-          count(*) as liczba_wynikow
-   from
-  (  select month as miesiac,
-            job as zawod
-     from basedata
-     where month in ('sep', 'oct')
-           and y = 'yes') t1
-   group by miesiac, zawod"
-)
-
-windows()
-par(mfrow=c(1,2))
-pie(job_month$liczba_wynikow[job_month$miesiac == 'sep'], 
-    labels = job_month$zawod[job_month$miesiac == 'sep'],
-    main = "Rozk³ad zawodów ludzi bior¹cych po¿yczki we wrzeœniu")
-pie(job_month$liczba_wynikow[job_month$miesiac == 'oct'], 
-    labels = job_month$zawod[job_month$miesiac == 'oct'],
-    main = "Rozk³ad zawodów ludzi bior¹cych po¿yczki w paŸdzierniku")
-#okazuje siê ¿e strza³ ¿e brane s¹ po¿yczki studenckie by³ nieuzasadniony
-#wiêkszoœci¹ w obu przypadkach s¹ ludzie pracujacy przy zarz¹dzaniu
-
 #analiza wp³ywu czasu trwania ostatniej rozmowy
 
 windows()
@@ -599,7 +573,7 @@ hist(basedata$duration[basedata$y == 'no'], xlab = "D³ugoœæ rozmowy w sekundach"
 hist(basedata$duration[basedata$y == 'yes'], xlab = "D³ugoœæ rozmowy w sekundach",
      ylab = "Liczba zgód", main = "Rozk³ad czasu trwania rozmowy w razie zgody")
 
-#widaæ, ¿e w przypadku wziêcia po¿yczki rozmowy z konsultantem by³y d³u¿sze
+#widaæ, ¿e w przypadku zgody na lokatê rozmowy z konsultantem by³y d³u¿sze
 #ludzie nie zgadzali siê szybciej niz w 5 minut d³ugie rozmowy przynosi³y zgody
 #ludzie odmawiaj¹cy starali siê jak najszybciej odmówiæ. Rozmowy powy¿ej 20 minut nie pomog³y
 
@@ -630,7 +604,7 @@ windows()
 par(mfrow=c(1,1))
 plot(campaign$liczba_kontaktow[campaign$liczba_prób >= 15], 
      campaign$skutecznosc[campaign$liczba_prób >= 15],
-     xlab = "Liczba kontaktóW w ramach kampanii marketingowej",
+     xlab = "Liczba kontaktów w ramach kampanii marketingowej",
      ylab = "Skutecznoœæ",
      main = "Skutecznoœæ marketingu w zale¿noœci od liczy kontaktów w ramach kampanii")
 
@@ -656,7 +630,7 @@ hist(pdays$pdays[pdays$y == 'yes'],
      xlab = "liczba dni pomiedzy kampaniami marketingowymi",
      ylab = "czêstoœæ zgód",
      main = "Rozk³ad zgód w zale¿noœci od d³ugoœci przerwy miedzy kampaniami")
-#zdecydowana wiêkszoœæ ludzi zgadzaj¹cych siê na po¿yczkê decyduje siê w odstêpie mniejszym ni¿ 200 dni
+#zdecydowana wiêkszoœæ ludzi zgadzaj¹cych siê na lokatê decyduje siê w odstêpie mniejszym ni¿ 200 dni
 #zestawmy to z wynikiem poprzedniej kampanii
 poutcome <- sqldf(
   "select poutcome,
@@ -687,13 +661,12 @@ hist(poutcome$pdays[poutcome$y == 'yes' & poutcome$poutcome == 'success'],
 #widaæ ¿e klienci s¹ doœæ statyczni: ma³o klientów zmieni³o stanowisko od czasu nastêpnej kampanii
 #zdecydowana wiêkszoœæ klientów którzy zdecydowali siê odmówiæ (przy poprzedniej zgodzie)
 #zgodzi³a siê po kontakcie po przerwie 50-200 dni lub! 300-350 dni
-#najwiêcej ludzi którzy ponownie wzieli po¿yczkê zrobi³o to po kontakcie po 50-100 dniach lub 150-200 dniach
-#nie bior¹ te¿ po¿yczek od razu, najwyraŸniej próbuj¹ siê zorientowaæ w promocjach itd
-#nak³adniaj¹c ludzi do wziêcia po¿yczki mimo uprzedniej odmowy kampanie po przerwie 400 dni nie przynios³y efektów
+#najwiêcej ludzi którzy ponownie wzieli siê zgodizli zrobi³o to po kontakcie po 50-100 dniach lub 150-200 dniach
+#nie zgadzaj¹ siê te¿  od razu, najwyraŸniej próbuj¹ siê zorientowaæ w promocjach itd
 #najwiêcej ludzi zmieni³o zdanie jeœli ponowny kontakt wyst¹ci³ pomiêdzy 100 a 200 dniach
-#przy tej wartoœci przerwy ogólnie najwiêcej klientów zgadza siê na po¿yczkê
+#przy tej wartoœci przerwy ogólnie najwiêcej klientów zgadza siê na lokatê
 
-#spróbujmy znaleŸc do cechuje klientów którzy zmienili zdanie i zgodzili siê na po¿yczkê
+#spróbujmy znaleŸc do cechuje klientów którzy zmienili zdanie i zgodzili siê na lokatê
 changed <- sqldf(
   "select *
    from basedata
@@ -713,7 +686,7 @@ sqldf(
    group by wyksztalcenie, y
    order by liczba_wynikow desc"
 )
-#widzimy ¿e najczêœciej zmieniaj¹ zdanie ludzie wykszta³ceni, moze pozostali nie maj¹ zdolnoœci kredytowej
+#widzimy ¿e najczêœciej zmieniaj¹ zdanie ludzie wykszta³ceni
 #sprawdzmy poziom zarobków wœród tych ludzi
 changed$poziom_zysku <- sqldf(
   "select case when balance < 0 then 'debt'
@@ -736,7 +709,7 @@ sqldf(
    group by poziom_zysku, y
    order by liczba_zgod desc"
 )
-#a jednak po¿yczki bior¹ raczej ludzie którzy s¹ wykszta³ceni ale maj¹ niski poziom zysku rocznego
+#a jednak na lokaty decyduj¹ siê raczej ludzie którzy s¹ wykszta³ceni ale maj¹ niski poziom zysku rocznego
 sqldf(
   "select housing as czy_hipoteka,
           count(*) as liczba_zgod
@@ -745,7 +718,7 @@ sqldf(
    order by liczba_zgod desc"
 )
 #nieznaczna wiêkszoœæ z nich ma hipotekê
-#jednak nie mo¿na jednoznacznie wskazaæ dominuj¹cy w¹ski typ cz³owieka który zmieni³ zdanie i wzi¹³ po¿yczkê
+#jednak nie mo¿na jednoznacznie wskazaæ dominuj¹cy w¹ski typ cz³owieka który zmieni³ zdanie i wzi¹³ lokatê
 
 #sprawdzmy jeszcze wp³yw liczby kampanii 
 prev <- sqldf(
@@ -813,12 +786,9 @@ test_data <- basedata_sorted[test_indices,]
 
 #--------------------Zadanie 4--------------------
 #stworzenie domyœlnego drzewa klasyfikuj¹cego
-model1 <- rpart(y ~., train_data, method = 'class')
+model1 <- rpart(y ~. -duration, train_data, method = 'class')
 windows()
 rpart.plot(model1)
-text(model1)
-
-
 
 #--------------------Zadanie 5--------------------
 #opis drzewa bêdzie w sprawozdaniu
@@ -843,6 +813,8 @@ test_an[test_an == 'no'] <- 0
 test_an[test_an == 'yes'] <- 1
 test_an <- as.numeric(test_an)
 confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
+#wartosc przyszlej funkcji celu: 1.213
+
 #widaæ, ¿e  jeœli chodzi o przyjêcie po¿yczki to model wiêcej nie trafi³ (false-negative) ni¿ trafi³
 #model swoj¹ skutecznoœæ nabija na odmowach, których jest pe³no,
 #ale nie jest przydatny do przewidywania wziêcia po¿yczki
@@ -882,23 +854,23 @@ test_an[test_an == 'no'] <- 0
 test_an[test_an == 'yes'] <- 1
 test_an <- as.numeric(test_an)
 
-weights <- seq(1, 2, by = 0.25)
-cp_vec <- seq(0.00, 0.02, by = 0.0025)
-minsplits <- seq(1, 22, by = 3)
+weights <- seq(1, 8, by = 0.25)
+cp_vec <- seq(0.00, 0.05, by = 0.0025)
+minsplits <- seq(1, 61, by = 3)
 
 best_score <- 0
 best_i <- 0
 best_j <- 0
 best_k <- 0
 
-sink('logDiv4.txt')
+# sink('logDiv4.txt')
 for (i in weights) {
   for (j in cp_vec) {
     for (k in minsplits) {
       weights_vec <- rep(1, length(train_data[, 1]))
       weights_vec[train_data$y == 'yes'] <- i
       
-      model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
+      model <- rpart(y ~. -duration, train_data, method = 'class', weights = weights_vec,
                      control = rpart.control(cp=j, minsplit = k))
       
       prediction_t <- predict(model, train_data, type = 'class')
@@ -936,25 +908,25 @@ for (i in weights) {
     }
   }
 }  
-sink()
+# sink()
 
 weights_vec <- rep(1, length(train_data[, 1]))
 weights_vec[train_data$y == 'yes'] <- 1.5
-model <- rpart(y ~., train_data, method = 'class', weights = weights_vec,
-               control = rpart.control(cp=0.005, minsplit = 16))
+model <- rpart(y ~. -duration, train_data, method = 'class', weights = weights_vec,
+               control = rpart.control(cp=0.005, minsplit = 13))
 
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
 confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 
-#score = 1.189
+#score = 1.414
 
 windows()
 rpart.plot(model)
 
 printcp(model)
 
-model <- prune(model, cp=0.019157)
+model <- prune(model, cp=0.014)
 
 windows()
 rpart.plot(model)
@@ -963,4 +935,4 @@ prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
 confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 
-#score = 1.676
+#score = 1.383
