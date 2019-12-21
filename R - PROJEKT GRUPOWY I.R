@@ -6,6 +6,7 @@ library(plyr)
 library(rpart)
 library(rpart.plot)
 library(SDMTools)
+library(caret)
 #za³adowanie bazowych danych
 
 
@@ -777,8 +778,8 @@ basedata_sorted <- sqldf(
 
 indices <- 1:length(basedata_sorted[, 1])
 train_indices <- indices %% 2 == 1
-val_indices <- indices %% 4 == 2
-test_indices <- indices %% 4 == 0
+val_indices <- indices %% 4 == 0
+test_indices <- indices %% 4 == 2
 
 train_data <- basedata_sorted[train_indices,]
 val_data <- basedata_sorted[val_indices,]
@@ -813,6 +814,7 @@ test_an[test_an == 'no'] <- 0
 test_an[test_an == 'yes'] <- 1
 test_an <- as.numeric(test_an)
 confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
+
 #wartosc przyszlej funkcji celu: 1.213
 
 #widaæ, ¿e  jeœli chodzi o przyjêcie po¿yczki to model wiêcej nie trafi³ (false-negative) ni¿ trafi³
@@ -837,8 +839,8 @@ basedata_sorted <- sqldf(
 
 indices <- 1:length(basedata_sorted[, 1])
 train_indices <- indices %% 2 == 1
-val_indices <- indices %% 4 == 2
-test_indices <- indices %% 4 == 0
+val_indices <- indices %% 4 == 0
+test_indices <- indices %% 4 == 2
 
 train_data <- basedata_sorted[train_indices,]
 val_data <- basedata_sorted[val_indices,]
@@ -854,9 +856,14 @@ test_an[test_an == 'no'] <- 0
 test_an[test_an == 'yes'] <- 1
 test_an <- as.numeric(test_an)
 
-weights <- seq(1, 8, by = 0.25)
-cp_vec <- seq(0.00, 0.05, by = 0.0025)
-minsplits <- seq(1, 61, by = 3)
+divisor = 4
+train_data$rowNo <- seq.int(nrow(train_data))
+train_data <- train_data[(train_data$rowNo %% divisor  == 0 & train_data$y == 'no') | train_data$y == 'yes', ]
+train_data$rowNo <- NULL
+
+weights <- seq(1, 4, by = 0.25)
+cp_vec <- seq(0, 0.02, by =0.0025)
+minsplits <- seq(1, 31, by = 3)
 
 best_score <- 0
 best_i <- 0
@@ -870,8 +877,8 @@ for (i in weights) {
       weights_vec <- rep(1, length(train_data[, 1]))
       weights_vec[train_data$y == 'yes'] <- i
       
-      model <- rpart(y ~. -duration, train_data, method = 'class', weights = weights_vec,
-                     control = rpart.control(cp=j, minsplit = k))
+      model <- rpart(y ~ . -duration, train_data, method = 'class', weights = weights_vec,
+                     control = rpart.control(cp=j, minsplit = k, xval = 20))
       
       prediction_t <- predict(model, train_data, type = 'class')
       prediction <- predict(model, val_data, type = 'class')
@@ -891,7 +898,16 @@ for (i in weights) {
           score2 = score2 + 1
         }
       }
-      score = score0 + 0.01*(score1 - score2) + 0.01*score1 #premia za pewnoœc TP vs FP
+      score3 = 0 #FN
+      for (z in 1:length(val_data[, 1])) {
+        if (prediction[z] == 'no' & val_data[z, 'y'] == 'yes') {
+          score3 = score3 + 1
+        }
+      }
+      sensitivity = score1 / (score1 + score3)
+      specificity = 2*score1 / (score1 + score2)
+      Gmean = sqrt(specificity * sensitivity)
+      score = Gmean
       
       if (score > best_score) {
         best_score <- score
@@ -911,9 +927,11 @@ for (i in weights) {
 # sink()
 
 weights_vec <- rep(1, length(train_data[, 1]))
-weights_vec[train_data$y == 'yes'] <- 1.5
-model <- rpart(y ~. -duration, train_data, method = 'class', weights = weights_vec,
-               control = rpart.control(cp=0.005, minsplit = 13))
+weights_vec[train_data$y == 'yes'] <- best_i
+model <- rpart(y ~ age+balance+job+marital+education+default+housing+loan+campaign+pdays
+               +previous+poutcome, train_data, method = 'class', weights = weights_vec,
+               control = rpart.control(cp=best_j, minsplit = best_k))
+
 
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
@@ -925,14 +943,13 @@ windows()
 rpart.plot(model)
 
 printcp(model)
-
-model <- prune(model, cp=0.014)
-
-windows()
-rpart.plot(model)
+model <- prune(model, model$cptable[which.min(model$cptable[,"xerror"]),"CP"])
 
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
 confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 
-#score = 1.383
+#score = 1.414
+
+windows()
+rpart.plot(model)
