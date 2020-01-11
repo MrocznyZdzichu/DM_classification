@@ -12,7 +12,7 @@ library(caret)
 
 
 #--------------------Zadanie 1--------------------
-basedata <- read.csv("E:/9sem/DM/zep/bank/bank.csv", row.names=NULL, sep=";", stringsAsFactors=FALSE)
+basedata <- read.csv("C:/Users/Maja/Desktop/Uczelnia/II SEM MGR/Data Mining/bank.csv", row.names=NULL, sep=";", stringsAsFactors=FALSE)
 
 
 
@@ -837,33 +837,31 @@ basedata_sorted <- sqldf(
             [default], contact, balance, age, previous, campaign, pdays, day, month"
 )
 
-indices <- 1:length(basedata_sorted[, 1])
-train_indices <- indices %% 2 == 1
-val_indices <- indices %% 4 == 0
-test_indices <- indices %% 4 == 2
+number_row <- 1:length(basedata_sorted[, 1])
+train_number_row <- number_row %% 2 == 1
+train_data <- basedata_sorted[train_number_row,]
+val_number_row <- number_row %% 4 == 0
+val_data <- basedata_sorted[val_number_row,]
+test_number_row <- number_row %% 4 == 2
+test_data <- basedata_sorted[test_number_row,]
 
-train_data <- basedata_sorted[train_indices,]
-val_data <- basedata_sorted[val_indices,]
-test_data <- basedata_sorted[test_indices,]
+val_y <- val_data$y
+val_y[val_y == 'no'] <- 0
+val_y[val_y == 'yes'] <- 1
+val_y <- as.numeric(val_y)
 
-val_an <- val_data$y
-val_an[val_an == 'no'] <- 0
-val_an[val_an == 'yes'] <- 1
-val_an <- as.numeric(val_an)
+test_y <- test_data$y
+test_y[test_y == 'no'] <- 0
+test_y[test_y == 'yes'] <- 1
+test_y <- as.numeric(test_y)
 
-test_an <- test_data$y
-test_an[test_an == 'no'] <- 0
-test_an[test_an == 'yes'] <- 1
-test_an <- as.numeric(test_an)
-
-divisor = 4
-train_data$rowNo <- seq.int(nrow(train_data))
-train_data <- train_data[(train_data$rowNo %% divisor  == 0 & train_data$y == 'no') | train_data$y == 'yes', ]
+train_data$rowNo <- seq(1,nrow(train_data))
+train_data <- train_data[(train_data$rowNo %% 4 == 0 & train_data$y == 'no') | train_data$y == 'yes', ]
 train_data$rowNo <- NULL
 
-weights <- seq(1, 4, by = 0.25)
+weight <- seq(1, 4, by = 0.25)
 cp_vec <- seq(0, 0.02, by =0.0025)
-minsplits <- seq(1, 31, by = 3)
+min_splits <- seq(1, 31, by = 3)
 
 best_score <- 0
 best_i <- 0
@@ -871,15 +869,14 @@ best_j <- 0
 best_k <- 0
 
 # sink('logDiv4.txt')
-for (i in weights) {
+for (i in weight) {
   for (j in cp_vec) {
-    for (k in minsplits) {
-      weights_vec <- rep(1, length(train_data[, 1]))
-      weights_vec[train_data$y == 'yes'] <- i
+    for (k in min_splits) {
+      weight_vec <- rep(1, length(train_data[, 1]))
+      weight_vec[train_data$y == 'yes'] <- i
       
-      model <- rpart(y ~ . -duration, train_data, method = 'class', weights = weights_vec,
-                     control = rpart.control(cp=j, minsplit = k, xval = 20))
-      
+      model <- rpart(y ~ . -duration, train_data, method = 'class', weight = weight_vec,
+                     control = rpart.control(cp=j, min_split = k, xval = 20))
       prediction_t <- predict(model, train_data, type = 'class')
       prediction <- predict(model, val_data, type = 'class')
       score_t <- mean(prediction_t == train_data$y)
@@ -897,17 +894,17 @@ for (i in weights) {
         if (prediction[z] == 'yes' & val_data[z, 'y'] == 'no') {
           score2 = score2 + 1
         }
-      }
-      score3 = 0 #FN
-      for (z in 1:length(val_data[, 1])) {
+        for (z in 1:length(val_data[, 1])) {
+        }
+        score3 = 0 #FN
         if (prediction[z] == 'no' & val_data[z, 'y'] == 'yes') {
           score3 = score3 + 1
         }
       }
-      sensitivity = score1 / (score1 + score3)
+      sensibility = score1 / (score1 + score3)
       specificity = 2*score1 / (score1 + score2)
-      Gmean = sqrt(specificity * sensitivity)
-      score = Gmean
+      G_mean = sqrt(specificity * sensibility)
+      score = G_mean
       
       if (score > best_score) {
         best_score <- score
@@ -916,40 +913,28 @@ for (i in weights) {
         best_k <- k
         best_model <- model
       }
-      
-      cat(sprintf("Wynik na zbiorze treningowym dla wag %f, cp=%f i minsplit=%i: %f\n", i, j, k, score_t))
-      cat(sprintf("Wynik na zbiorze walidacyjnym dla wag %f, cp=%f i minsplit=%i: %f\n", i, j, k, score))
-      cat(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
+      cat(sprintf("Wynik na zbiorze treningowym dla wag %f, cp=%f i min_split=%i: %f\n", i, j, k, score_t))
+      cat(sprintf("Wynik na zbiorze walidacyjnym dla wag %f, cp=%f i min_split=%i: %f\n", i, j, k, score))
+      cat(confusion.matrix(val_y, as.numeric(prediction) - 1, 0.5))
       cat("\n")
     }
   }
 }  
 # sink()
 
-weights_vec <- rep(1, length(train_data[, 1]))
-weights_vec[train_data$y == 'yes'] <- best_i
+weight_vec <- rep(1, length(train_data[, 1]))
+weight_vec[train_data$y == 'yes'] <- best_i
 model <- rpart(y ~ age+balance+job+marital+education+default+housing+loan+campaign+pdays
-               +previous+poutcome, train_data, method = 'class', weights = weights_vec,
-               control = rpart.control(cp=best_j, minsplit = best_k))
-
-
+               +previous+poutcome, train_data, method = 'class', weight = weight_vec,
+               control = rpart.control(cp=best_j, min_split = best_k))
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
-
-#score = 1.414
-
-windows()
-rpart.plot(model)
-
+confusion.matrix(test_an, as.numeric(prediction2) - 1, 0.5)
+rpart.plot(model) #score = 1.414
 printcp(model)
-model <- prune(model, model$cptable[which.min(model$cptable[,"xerror"]),"CP"])
 
+model <- prune(model, model$cptable[which.min(model$cptable[,"xerror"]),"CP"])
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
-
-#score = 1.414
-
-windows()
-rpart.plot(model)
+confusion.matrix(test_an, as.numeric(prediction2) - 1, 0.5)
+rpart.plot(model) #score = 1.414
