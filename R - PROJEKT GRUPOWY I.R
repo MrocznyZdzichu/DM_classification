@@ -786,43 +786,47 @@ val_data <- basedata_sorted[val_indices,]
 test_data <- basedata_sorted[test_indices,]
 
 #--------------------Zadanie 4--------------------
-#stworzenie domyœlnego drzewa klasyfikuj¹cego
-model1 <- rpart(y ~. -duration, train_data, method = 'class')
+#stworzenie domyÅ›lnego drzewa klasyfikujÄ…cego
+library(rpart)
+library(rpart.plot)
+library(SDMTools)
+
+model1 = rpart(y ~ ., train_data, method = 'class')
 windows()
 rpart.plot(model1)
+text(model1)
+
+
 
 #--------------------Zadanie 5--------------------
 #opis drzewa bêdzie w sprawozdaniu
 #analiza drzewa
 #wyniki na zbiorze ucz¹cym i testowym
 
-prediction1 <- predict(model1, train_data, type = "class")
-mean(prediction1 == train_data$y)
-train_an <- train_data$y
-train_an[train_an == 'no'] <- 0
-train_an[train_an == 'yes'] <- 1
-train_an <- as.numeric(train_an)
-confusion.matrix(train_an, as.numeric(prediction1) - 1, 0.5)
+prediction1 = predict(model1, train_data, type = "class")
+meanAcc = mean(prediction1 == train_data$y)
+trainAn = train_data$y
+trainAn[trainAn == 'no'] = 0
+trainAn[trainAn == 'yes'] = 1
+trainAn = as.numeric(trainAn)
+confusion.matrix(trainAn, as.numeric(prediction1) - 1, 0.5)
 #nawet na zbiorze ucz¹cym jest wiêcej false-negative'ów ni¿ yes-yes
 
-prediction2 <- predict(model1, test_data, type = 'class')
+prediction2 = predict(model1, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-#0.893% skutecznoœci @@> a¿ za dobrze bym powiedzia³
+#0.893% skutecznoœci @@> a¿ za dobrze bym powiedzia³‚
 
-test_an <- test_data$y
-test_an[test_an == 'no'] <- 0
-test_an[test_an == 'yes'] <- 1
-test_an <- as.numeric(test_an)
-confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
-
-#wartosc przyszlej funkcji celu: 1.213
-
-#widaæ, ¿e  jeœli chodzi o przyjêcie po¿yczki to model wiêcej nie trafi³ (false-negative) ni¿ trafi³
+testAn = test_data$y
+testAn[testAn == 'no'] = 0
+testAn[testAn == 'yes'] = 1
+testAn = as.numeric(testAn)
+confusion.matrix(testAn, as.numeric(prediction2) - 1, 0.5)
+#widaæ, ¿e  jeœli chodzi o przyjêcie po¿yczki to model wiêcej nie trafi³‚ (false-negative) ni¿ trafi³‚
 #model swoj¹ skutecznoœæ nabija na odmowach, których jest pe³no,
 #ale nie jest przydatny do przewidywania wziêcia po¿yczki
 
 #domyœlne drzewo spisuje siê s³abo, nie ma zdolnoœci do przewidywania zgód
-#spodziewamy siê poprawiæ jakoœ klasyfikacji drzewami z dobieranymi parametrami
+#spodziewamy siê poprawiæ jakoœæ klasyfikacji drzewami z dobieranymi parametrami
 #i z ustaleniem wiêkszych wag dla próbek o y = 'yes'
 
 #wwartosc funkcji celu w zadaniu optymalizacji: 0.893 + 0.01*(43-33) + 0.005*43 = 1.423
@@ -851,10 +855,10 @@ val_an[val_an == 'no'] <- 0
 val_an[val_an == 'yes'] <- 1
 val_an <- as.numeric(val_an)
 
-test_an <- test_data$y
-test_an[test_an == 'no'] <- 0
-test_an[test_an == 'yes'] <- 1
-test_an <- as.numeric(test_an)
+testAn <- test_data$y
+testAn[testAn == 'no'] <- 0
+testAn[testAn == 'yes'] <- 1
+testAn <- as.numeric(testAn)
 
 divisor = 4
 train_data$rowNo <- seq.int(nrow(train_data))
@@ -935,7 +939,7 @@ model <- rpart(y ~ age+balance+job+marital+education+default+housing+loan+campai
 
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
+confusion.matrix(testAn, as.numeric(prediction2) - 1, .5)
 
 #score = 1.414
 
@@ -947,7 +951,7 @@ model <- prune(model, model$cptable[which.min(model$cptable[,"xerror"]),"CP"])
 
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
+confusion.matrix(testAn, as.numeric(prediction2) - 1, .5)
 
 #score = 1.414
 
