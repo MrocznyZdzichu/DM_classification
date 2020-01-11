@@ -3,8 +3,6 @@ setwd("E:/9sem/DM/zep/repo")
 library(sqldf)
 library(data.table)
 library(plyr)
-library(rpart)
-library(rpart.plot)
 library(SDMTools)
 library(caret)
 #za�adowanie bazowych danych
@@ -789,7 +787,6 @@ test_data <- basedata_sorted[test_indices,]
 #stworzenie domyślnego drzewa klasyfikującego
 library(rpart)
 library(rpart.plot)
-library(SDMTools)
 
 model1 = rpart(y ~ ., train_data, method = 'class')
 windows()
