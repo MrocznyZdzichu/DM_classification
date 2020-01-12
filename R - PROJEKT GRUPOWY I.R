@@ -7,49 +7,8 @@ library(SDMTools)
 library(caret)
 #za³adowanie bazowych danych
 
-
-
 #--------------------Zadanie 1--------------------
 basedata <- read.csv("E:/9sem/DM/zep/bank/bank.csv", row.names=NULL, sep=";", stringsAsFactors=FALSE)
-
-
-
-#--------------------Zadanie 2--------------------
-#opis danych i zagadnienia klasyfikacyjnego:
-#zaczerpniêty z MCI Machine Learning Repository:
-
-# Input variables:
-#   # bank client data:
-#   1 - age (numeric)
-# 2 - job : type of job (categorical: "admin.","unknown","unemployed","management","housemaid","entrepreneur","student",
-#                        "blue-collar","self-employed","retired","technician","services") 
-# 3 - marital : marital status (categorical: "married","divorced","single"; note: "divorced" means divorced or widowed)
-# 4 - education (categorical: "unknown","secondary","primary","tertiary")
-# 5 - default: has credit in default? (binary: "yes","no")
-# 6 - balance: average yearly balance, in euros (numeric) 
-# 7 - housing: has housing loan? (binary: "yes","no")
-# 8 - loan: has personal loan? (binary: "yes","no")
-# # related with the last contact of the current campaign:
-# 9 - contact: contact communication type (categorical: "unknown","telephone","cellular") 
-# 10 - day: last contact day of the month (numeric)
-# 11 - month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
-# 12 - duration: last contact duration, in seconds (numeric)
-# # other attributes:
-# 13 - campaign: number of contacts performed during this campaign and for this client (numeric, includes last contact)
-# 14 - pdays: number of days that passed by after the client was last contacted from a previous campaign (numeric, -1 means client was not previously contacted)
-# 15 - previous: number of contacts performed before this campaign and for this client (numeric)
-# 16 - poutcome: outcome of the previous marketing campaign (categorical: "unknown","other","failure","success")
-# 
-# Output variable (desired target):
-#   17 - y - has the client subscribed a term deposit? (binary: "yes","no")
-
-#The classification goal is to predict if the client will subscribe a term deposit (variable y).
-
-#warto zauwa¿yæ ¿e dane te s¹ ju¿ obrobione. Nie zawieraj¹ wartoœci pustych
-#a wartoœci nieznane, np zawodów rozmówców s¹ oznaczone
-
-
-
 
 #--------------------Zadanie 3--------------------
 #analiza eksploracyjna
@@ -59,9 +18,6 @@ y_quot <- sqldf(
    group by y"
 )
 y_quot
-#mamy 8 razy mniej zgód na po¿yczkê ni¿ odmów. Mo¿e byæ trochê problem z wytrenowaniem
-#drzwa przewiduj¹cego zgody
-#badanie wyp³ywu wieku ankietowanych
 
 age_no = sqldf("
 select age, count(y) as no
@@ -91,12 +47,6 @@ plot(age_yes$age, age_yes$yes, xlab = "Wiek", ylab = "Liczba zgód",
      main="Rozk³ad wieku zgadzajacych siê")
 plot(age_y$age, age_y$liczba_prob, xlab = "Wiek", ylab = "Liczba prób",
      main = "Rozk³ad wieku ogólnie")
-#strasznie ma³o danych dla ludzi skrajnie m³odych i skrajnie starych
-#dlatego nie ma wykresu skutecznoœæi w u³amku, bo dla tych ludzi
-#wynik by³by niewiarygodny i zawy¿ony
-
-#liczba zgód jest nieproporcjonalnie wiêksza dla ludzi
-#w wieku pomiêdzy 45-60 rokiem ¿ycia
 
 job_no = sqldf("
 select job, count(y) as no
@@ -120,9 +70,7 @@ par(mfrow = c(1,1))
 barplot(job_y$skutecznosc, names.arg = rownames(job_y), 
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na zawód")
-#zdecydowanie du¿a wiêksza skutecznoœæ dla studentów/uczniów i emerytów
 
-#analiza statusu matrymonialnego
 marital = sqldf(
   "select q1.stan as stan,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -143,7 +91,6 @@ marital = sqldf(
   on q1.stan = q2.stan"
 )
 
-#robiê w ten sposób bo backend od RSqLite nie radzi sobie z konwersj¹
 marital$skutecznosc <- marital$udane / marital$liczba_prob
 
 windows()
@@ -151,9 +98,7 @@ par(mfrow = c(1,1))
 barplot(marital$skutecznosc, names.arg = marital$stan, 
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na status matrymonialny")
-#widaæ ¿e married rzadziej decyduj¹ siê na lokatê
 
-#analiza wp³ywu poziomu wykszta³cenia
 education <- sqldf(
   "select q1.wyksztalcenie as wyksztalcenie,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -181,10 +126,7 @@ par(mfrow = c(1,1))
 barplot(education$skutecznosc, names.arg = education$wyksztalcenie,
         ylab = "Skutecznioœæ marketingu",
         main = "Skutecznioœæ marketingu ze wzglêdu na wykszta³cenie")
-#ludzie z wykszta³ceniem wy¿szym czêœciej zgadzali siê na lokatê
-#mo¿na siê by³o tego spodziewaæ, teoretycznie wiêcej zarabiaj¹ wiêc maj¹ co odk³adaæ
 
-#analiza defaultu - posiadania kredytu, któego nie jest siê w stanie sp³aciæ
 default <- sqldf(
   "select q1.bankrut as bankrut,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -213,12 +155,6 @@ barplot(default$skutecznosc, names.arg = default$bankrut,
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na kredyt niemo¿liwy do sp³acenia")
 
-#rozk³ada siê identywcznie, ale bardzo ma³o danych dla default = yes
-
-#analiza zamo¿noœci
-#przetwarzamy i wizualizujemy bardziej rêcznie
-#gdy¿ wbudowane histogramy ciê¿ko razem porównywaæ
-#ze wzglêdu na trudn¹ manipulacjê przedzia³ami na osi X
 balance_yes <- sqldf(
   "select balance
    from basedata
@@ -230,7 +166,7 @@ balance_all <- sqldf(
    from basedata
   "
 )
-#aby ³atwiej porównywaæ ucinamy ka¿dy zysk do 5-setek
+
 balance_yes$balance <- round(balance_yes$balance / 500) * 500
 balance_all$balance <- round(balance_all$balance / 500) * 500
 
@@ -268,11 +204,6 @@ barplot(balance_all$liczba_prob, names.arg = balance_all$balance,
         xlab = "Roczny zysk w euro", ylab =  "Liczba prób telemarketingowych",
         main = "Rozk³ad prób marketingu ze wzglêdu na zysk roczny")
 
-#prób dla ludzi z olbrzymim zyskiem 10000+ jest malo dlatego s¹dzimy, ¿e du¿a skuecznoœæ dla nich jest przypadkowa
-#warto zwróciæ uwagê, ¿e jest du¿o prób dla ludzi z ma³¹ strat¹ do 500 lub zyskiem do 4 tysiêcy
-#warto zauwazyæ du¿¹ skutecznoœæ dla ludzi z zyskiem 2000 - 4000 euro rocznie
-
-#analiza posiadania obecnie kredytu hipotecznego
 housing <- sqldf(
   "select q1.hipoteka as hipoteka,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -299,10 +230,7 @@ par(mfrow = c(1,1))
 barplot(housing$skutecznosc, names.arg = housing$hipoteka,
         main = "Skutecznoœæ marketingu ze wzglêdu na posiadanie kredytu hipotecznego",
         ylab = "Skutecznoœc marketingu")
-#widaæ ¿e skutecznoœæ marketingu jest o wiele wiêksza w przypadku
-#rozmówcóW, którzy nie maj¹ na g³woie kredytu hipotecznego
 
-#sprawdzmy jak hipoteka siê przedstawia przy uwzglednieniu zyskow/dlugow
 housing_balance <- sqldf(
   "select case
           when balance < 0 then 'debt'
@@ -331,8 +259,7 @@ housing_balance <- sqldf(
             housing,
             y"
 )
-#tutaj przy okazji widaæ, ¿e zdecydowana wiêkszoœc ludzi którzy rok koñcz¹ z d³ugiem
-#posiada kredyt hipoteczny
+
 housing_balance_no <- sqldf(
   "select *
    from housing_balance
@@ -354,11 +281,6 @@ barplot(housing_balance_yes$skutecznosc,
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu posiadanie hipoteki i poziom zysku rocznego")
 
-#warto zwróciæ uwagê, ¿e chêtnymi klientami s¹ ludzie
-#o œrednim (w tym mid-low i mid-high) poziomie bilansu rocznego
-#i nieposiadaj¹cy kredytów hipotecznych
-
-#sprawdzenie wp³ywu posiadania po¿yczki
 loan <- sqldf(
   "select q1.pozyczka as pozyczka,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -385,9 +307,7 @@ par(mfrow = c(1,1))
 barplot(loan$skutecznosc, names.arg = loan$pozyczka,
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na posiadanie po¿yczki")
-#nie ma niespodzianki, ¿e ludzie którzy obecnie nie maj¹ ¿adnej po¿yczki, bior¹ lokatê chetniej
 
-#sprawdŸmy uwzgledniaj¹c niemo¿liwoœc sp³aty (defaulty)
 loan_default <- sqldf(
   "select loan, [default], y as wynik, count(y) as liczba_wynikow
    from basedata
@@ -396,8 +316,6 @@ loan_default <- sqldf(
 )
 loan_default$loan <- paste("loan", loan_default$loan, sep = "-")
 loan_default$default <- paste("def", loan_default$default, sep = "-")
-#mamy bardzo ma³¹ próbê dla ludzi z kredytem i z defaultem
-#wiêc wskazanie dla nich mo¿e byæ ma³o wiarygodne
 
 loan_default_no <- sqldf(
   "select *
@@ -419,11 +337,7 @@ barplot(housing_balance_yes$skutecznosc,
         names.arg = paste(housing_balance_yes$housing, housing_balance_yes$balance_level, sep="-"),
         ylab = "Skutecznoœæ marketingu",
         main = "Skutecznoœæ marketingu ze wzglêdu na posiadanie po¿yczki lub utopionego kredytu")
- 
-#niestety nie mo¿na wyci¹gn¹æ ¿adnego wniosku na temat wyró¿nienia szczególnej
-#grupy rozmówców na podstawie par loan-default
 
-#badanie wp³ywu typu kontaktu
 contact <- sqldf(
   "select q1.kontakt as kontakt,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -450,9 +364,7 @@ par(mfrow=c(1,1))
 barplot(contact$skutecznosc, names.arg = contact$kontakt,
         ylab = "Skutecznoœæ marketingu", 
         main = "Skutecznoœæ marketingu ze wzglêdu na formê kontaktu")
-#nie wygl¹da na to aby forma kontaktu mia³¹ wp³yw na wynik telemarketingu
 
-#analiza wp³ywu daty kontaktów
 day <- sqldf(
   "select q1.dzien as dzien,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -483,7 +395,7 @@ sqldf(
   where liczba_prob >= 100
   order by skutecznosc desc"
 )
-#najwiêksz¹ skutecznoœci¹ przy przynajmniej 100 obserwacjach wyró¿ni³y siê dni 12, 30, 18 i 5
+
 month <- sqldf(
   "select q1.miesiac as miesiac,
           cast(q1.liczba_prob as real) as liczba_prob,
@@ -545,8 +457,6 @@ day_month_yes <- sqldf(
 )
 day_month_yes$skutecznosc <- day_month_yes$liczba_udanych / day_month_yes$liczba_prob
 
-#tych ró¿nych dni jest du¿o, wiêc raport bêdzie w postaci selecta
-#sprawdzamy dni, dla których kontaktów by³o conajmniej 15 i skutecznosc >= 10%
 sqldf(
   "select *
    from day_month_yes
@@ -562,9 +472,6 @@ sqldf(
    order by skutecznosc asc"
 )
 
-#istniej¹ dni które wyró¿niaj¹ siê wysok¹ skutecznoœci¹ i takie dla których skutecznoœæ jest znikoma.
-#analiza wp³ywu czasu trwania ostatniej rozmowy
-
 windows()
 par(mfrow=c(1,2))
 hist(basedata$duration[basedata$y == 'no'], xlab = "D³ugoœæ rozmowy w sekundach",
@@ -572,11 +479,6 @@ hist(basedata$duration[basedata$y == 'no'], xlab = "D³ugoœæ rozmowy w sekundach"
 hist(basedata$duration[basedata$y == 'yes'], xlab = "D³ugoœæ rozmowy w sekundach",
      ylab = "Liczba zgód", main = "Rozk³ad czasu trwania rozmowy w razie zgody")
 
-#widaæ, ¿e w przypadku zgody na lokatê rozmowy z konsultantem by³y d³u¿sze
-#ludzie nie zgadzali siê szybciej niz w 5 minut d³ugie rozmowy przynosi³y zgody
-#ludzie odmawiaj¹cy starali siê jak najszybciej odmówiæ. Rozmowy powy¿ej 20 minut nie pomog³y
-
-#analiza wp³ywu liczby kontaktów w ramach kampanii
 campaign <- sqldf(
   "select campaign as liczba_kontaktow,
           count(y) as liczba_prób
@@ -607,11 +509,6 @@ plot(campaign$liczba_kontaktow[campaign$liczba_prób >= 15],
      ylab = "Skutecznoœæ",
      main = "Skutecznoœæ marketingu w zale¿noœci od liczy kontaktów w ramach kampanii")
 
-#mo¿na dostrzec ma³¹ tendencjê, ¿e skutecznoœæ maleje wraz ze wzrostem liczby kontaktów
-#mêczenie klienta telefonami nie pomaga
-
-#analiza wp³ywu czasu pomiêdzy, który up³yn¹³ od ostatniego kontaktu z poprzedniej kampanii
-#zbijamy przerwy na przedzia³y kategoryczne w celu ³atwiejszej analizy
 pdays <- sqldf(
   "select pdays,
           y
@@ -629,8 +526,7 @@ hist(pdays$pdays[pdays$y == 'yes'],
      xlab = "liczba dni pomiedzy kampaniami marketingowymi",
      ylab = "czêstoœæ zgód",
      main = "Rozk³ad zgód w zale¿noœci od d³ugoœci przerwy miedzy kampaniami")
-#zdecydowana wiêkszoœæ ludzi zgadzaj¹cych siê na lokatê decyduje siê w odstêpie mniejszym ni¿ 200 dni
-#zestawmy to z wynikiem poprzedniej kampanii
+
 poutcome <- sqldf(
   "select poutcome,
           pdays,
@@ -657,15 +553,7 @@ hist(poutcome$pdays[poutcome$y == 'yes' & poutcome$poutcome == 'success'],
      xlab = "liczba dni pomiêdzy kampaniami marketingowymi",
      ylab = "liczba zgód obecnie", 
      main = "Rozk³ad zgód ze wzglêdu na czas od poprzedniej zgody")
-#widaæ ¿e klienci s¹ doœæ statyczni: ma³o klientów zmieni³o stanowisko od czasu nastêpnej kampanii
-#zdecydowana wiêkszoœæ klientów którzy zdecydowali siê odmówiæ (przy poprzedniej zgodzie)
-#zgodzi³a siê po kontakcie po przerwie 50-200 dni lub! 300-350 dni
-#najwiêcej ludzi którzy ponownie wzieli siê zgodizli zrobi³o to po kontakcie po 50-100 dniach lub 150-200 dniach
-#nie zgadzaj¹ siê te¿  od razu, najwyraŸniej próbuj¹ siê zorientowaæ w promocjach itd
-#najwiêcej ludzi zmieni³o zdanie jeœli ponowny kontakt wyst¹ci³ pomiêdzy 100 a 200 dniach
-#przy tej wartoœci przerwy ogólnie najwiêcej klientów zgadza siê na lokatê
 
-#spróbujmy znaleŸc do cechuje klientów którzy zmienili zdanie i zgodzili siê na lokatê
 changed <- sqldf(
   "select *
    from basedata
@@ -673,10 +561,7 @@ changed <- sqldf(
          and y = 'yes'
          and pdays <> - 1"
 )
-#analizuj¹c tê tabelê w BROWSERZE rzuca siê w oczy ¿e: 
-#   prawie nikt z nich nie ma po¿yczki - loan = 'no'
-#   prawie ka¿dy kontakt by³ na komórkê 'cellular'
-#   nikt z nich nie ma utopionego kredytu
+
 sqldf(
   "select education as wyksztalcenie,
           y as wynik,
@@ -685,8 +570,7 @@ sqldf(
    group by wyksztalcenie, y
    order by liczba_wynikow desc"
 )
-#widzimy ¿e najczêœciej zmieniaj¹ zdanie ludzie wykszta³ceni
-#sprawdzmy poziom zarobków wœród tych ludzi
+
 changed$poziom_zysku <- sqldf(
   "select case when balance < 0 then 'debt'
                when balance between 0 and 500 then 'low'
@@ -708,7 +592,7 @@ sqldf(
    group by poziom_zysku, y
    order by liczba_zgod desc"
 )
-#a jednak na lokaty decyduj¹ siê raczej ludzie którzy s¹ wykszta³ceni ale maj¹ niski poziom zysku rocznego
+
 sqldf(
   "select housing as czy_hipoteka,
           count(*) as liczba_zgod
@@ -716,10 +600,7 @@ sqldf(
    group by czy_hipoteka
    order by liczba_zgod desc"
 )
-#nieznaczna wiêkszoœæ z nich ma hipotekê
-#jednak nie mo¿na jednoznacznie wskazaæ dominuj¹cy w¹ski typ cz³owieka który zmieni³ zdanie i wzi¹³ lokatê
 
-#sprawdzmy jeszcze wp³yw liczby kampanii 
 prev <- sqldf(
   "select previous as liczba_kampanii,
           count(y) as liczba_prób
@@ -754,20 +635,6 @@ plot(prev$liczba_kampanii, prev$liczba_prób,
      ylab = "Liczba bie¿¹cych prób przy x kampaniach poprzedzaj¹cych",
      main = "Rozk³ad liczby prób o danej liczbie kampanii poprzedzaj¹cych")
 
-
-#do 6. kampanii poprzedzaj¹cych mamy du¿o próbek, wiêc analiza mo¿e byæ wiarygodna
-#mo¿na zauwa¿yæ ma³¹ tendencjê wzrostow¹ - klieci s¹ lojalni, a przynajmniej Ci od 6 kampanii
-#a im wiêcej ich przebyli tym wiêksza skutecznoœæ marketingu
-#dla wiekszych liczb kampanii mamy ma³o prób, ale raczej spodziewalibyœmy siê, ¿e nie skutkuj¹
-#i w³asnie dlatego nie by³y podejmowane
-
-#podzia³ danych na treningowe, walidacyjne i testowe
-
-#aby dane mog³by byæ reprezentatywne poszeregujemy dany i wybierzemy zbiory okresowo
-#w sekwencji treningowy - walidacyjny - treningowy - testowy
-#ustawiamy dane pokolei wed³ug kryteriów najpierw kategorycznych, potem liczbowych
-#kolejnosc sortowania: y, poutcome, education, job, marital, housing, loan, default, contact, balance, age
-#previous, campaing, pdays, day, month. W 1 kolejnosci zmienne mo¿e bardziej istotne
 basedata_sorted <- sqldf(
   "select * from basedata
    order by y, poutcome, education, job, marital, housing, loan,
@@ -792,14 +659,7 @@ model1 = rpart(y ~ .-duration, train_data, method = 'class')
 windows()
 rpart.plot(model1)
 
-
-
-
 #--------------------Zadanie 5--------------------
-#opis drzewa bêdzie w sprawozdaniu
-#analiza drzewa
-#wyniki na zbiorze ucz¹cym i testowym
-
 prediction1 = predict(model1, train_data, type = "class")
 meanAcc = mean(prediction1 == train_data$y)
 trainAn = train_data$y
@@ -807,30 +667,20 @@ trainAn[trainAn == 'no'] = 0
 trainAn[trainAn == 'yes'] = 1
 trainAn = as.numeric(trainAn)
 confusion.matrix(trainAn, as.numeric(prediction1) - 1, 0.5)
-#nawet na zbiorze ucz¹cym jest wiêcej false-negative'ów ni¿ yes-yes
+
 
 prediction2 = predict(model1, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-#0.893% skutecznoœci @@> a¿ za dobrze bym powiedzia³‚
 
 testAn = test_data$y
 testAn[testAn == 'no'] = 0
 testAn[testAn == 'yes'] = 1
 testAn = as.numeric(testAn)
 confusion.matrix(testAn, as.numeric(prediction2) - 1, 0.5)
-#widaæ, ¿e  jeœli chodzi o przyjêcie po¿yczki to model wiêcej nie trafi³‚ (false-negative) ni¿ trafi³‚
-#model swoj¹ skutecznoœæ nabija na odmowach, których jest pe³no,
-#ale nie jest przydatny do przewidywania wziêcia po¿yczki
-
-#domyœlne drzewo spisuje siê s³abo, nie ma zdolnoœci do przewidywania zgód
-#spodziewamy siê poprawiæ jakoœæ klasyfikacji drzewami z dobieranymi parametrami
-#i z ustaleniem wiêkszych wag dla próbek o y = 'yes'
-
-#wwartosc funkcji celu w zadaniu optymalizacji: 0.893 + 0.01*(43-33) + 0.005*43 = 1.423
 
 #--------------------Zadanie 6 i 7--------------------
-#walidacja - analiza wyp³ywu hiperparametrów na jakoœæ klasyfikacji
-#wp³yw zwiêkszonych wag
+library(rpart)
+library(rpart.plot)
 
 basedata_sorted <- sqldf(
   "select * from basedata
@@ -840,27 +690,20 @@ basedata_sorted <- sqldf(
 
 indices <- 1:length(basedata_sorted[, 1])
 train_indices <- indices %% 2 == 1
-val_indices <- indices %% 4 == 0
-test_indices <- indices %% 4 == 2
-
 train_data <- basedata_sorted[train_indices,]
+val_indices <- indices %% 4 == 0
 val_data <- basedata_sorted[val_indices,]
+test_indices <- indices %% 4 == 2
 test_data <- basedata_sorted[test_indices,]
 
 val_an <- val_data$y
 val_an[val_an == 'no'] <- 0
 val_an[val_an == 'yes'] <- 1
 val_an <- as.numeric(val_an)
-
-testAn <- test_data$y
-testAn[testAn == 'no'] <- 0
-testAn[testAn == 'yes'] <- 1
-testAn <- as.numeric(testAn)
-
-divisor = 4
-train_data$rowNo <- seq.int(nrow(train_data))
-train_data <- train_data[(train_data$rowNo %% divisor  == 0 & train_data$y == 'no') | train_data$y == 'yes', ]
-train_data$rowNo <- NULL
+test_an <- test_data$y
+test_an[test_an == 'no'] <- 0
+test_an[test_an == 'yes'] <- 1
+test_an <- as.numeric(test_an)
 
 weights <- seq(1, 4, by = 0.25)
 cp_vec <- seq(0, 0.02, by =0.0025)
@@ -871,7 +714,7 @@ best_i <- 0
 best_j <- 0
 best_k <- 0
 
-# sink('logDiv4.txt')
+sink('log.txt')
 for (i in weights) {
   for (j in cp_vec) {
     for (k in minsplits) {
@@ -886,7 +729,6 @@ for (i in weights) {
       score_t <- mean(prediction_t == train_data$y)
       score0 <- mean(prediction == val_data$y)
       
-      #wp³yw TP
       score1 = 0 #TP
       for (z in 1:length(val_data[, 1])) {
         if (prediction[z] == 'yes' & val_data[z, 'y'] == 'yes') {
@@ -906,7 +748,99 @@ for (i in weights) {
         }
       }
       sensitivity = score1 / (score1 + score3)
-      specificity = 2*score1 / (score1 + score2)
+      specificity = score1 / (score1 + score2)
+      Gmean = sqrt(specificity * sensitivity)
+      score = Gmean
+      
+      if (score > best_score) {
+        best_score <- score
+        best_i <- i
+        best_j <- j
+        best_k <- k
+        best_model <- model
+      }
+      
+      cat(sprintf("Wynik na zbiorze treningowym dla wag %f, cp=%f i minsplit=%i: %f\n", i, j, k, score_t))
+      cat(sprintf("Wynik na zbiorze walidacyjnym dla wag %f, cp=%f i minsplit=%i: %f\n", i, j, k, score))
+      cat(confusion.matrix(val_an, as.numeric(prediction) - 1, .5))
+      cat("\n")
+    }
+  }
+}  
+sink()
+
+weights_vec <- rep(1, length(train_data[, 1]))
+weights_vec[train_data$y == 'yes'] <- best_i
+model <- rpart(y ~ . -duration, train_data, method = 'class', weights = weights_vec,
+               control = rpart.control(cp=best_j, minsplit = best_k))
+
+#ad hoc model
+weights_vec <- rep(1, length(train_data[, 1]))
+weights_vec[train_data$y == 'yes'] <- 2.25
+model <- rpart(y ~ . -duration, train_data, method = 'class', weights = weights_vec,
+               control = rpart.control(cp=0.0075, minsplit = 25))
+
+
+prediction2 <- predict(model, test_data, type = 'class')
+mean(prediction2 == test_data$y)
+confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
+
+#score = 1.414
+
+windows()
+rpart.plot(model)
+
+divisor = 3
+train_data$rowNo <- seq.int(nrow(train_data))
+train_data <- train_data[(train_data$rowNo %% divisor  == 0 & train_data$y == 'no') | train_data$y == 'yes', ]
+train_data$rowNo <- NULL
+
+
+weights <- seq(1, 4, by = 0.25)
+cp_vec <- seq(0, 0.02, by =0.0025)
+minsplits <- seq(1, 31, by = 3)
+
+best_score <- 0
+best_i <- 0
+best_j <- 0
+best_k <- 0
+
+
+sink('logDiv4.txt')
+for (i in weights) {
+  for (j in cp_vec) {
+    for (k in minsplits) {
+      weights_vec <- rep(1, length(train_data[, 1]))
+      weights_vec[train_data$y == 'yes'] <- i
+      
+      model <- rpart(y ~ . -duration, train_data, method = 'class', weights = weights_vec,
+                     control = rpart.control(cp=j, minsplit = k, xval = 20))
+      
+      prediction_t <- predict(model, train_data, type = 'class')
+      prediction <- predict(model, val_data, type = 'class')
+      score_t <- mean(prediction_t == train_data$y)
+      score0 <- mean(prediction == val_data$y)
+    
+      score1 = 0 #TP
+      for (z in 1:length(val_data[, 1])) {
+        if (prediction[z] == 'yes' & val_data[z, 'y'] == 'yes') {
+          score1 = score1 + 1
+        }
+      }
+      score2 = 0 #FP
+      for (z in 1:length(val_data[, 1])) {
+        if (prediction[z] == 'yes' & val_data[z, 'y'] == 'no') {
+          score2 = score2 + 1
+        }
+      }
+      score3 = 0 #FN
+      for (z in 1:length(val_data[, 1])) {
+        if (prediction[z] == 'no' & val_data[z, 'y'] == 'yes') {
+          score3 = score3 + 1
+        }
+      }
+      sensitivity = score1 / (score1 + score3)
+      specificity = score1 / (score1 + score2)
       Gmean = sqrt(specificity * sensitivity)
       score = Gmean
       
@@ -929,14 +863,18 @@ for (i in weights) {
 
 weights_vec <- rep(1, length(train_data[, 1]))
 weights_vec[train_data$y == 'yes'] <- best_i
-model <- rpart(y ~ age+balance+job+marital+education+default+housing+loan+campaign+pdays
-               +previous+poutcome, train_data, method = 'class', weights = weights_vec,
+model <- rpart(y ~ . -duration, train_data, method = 'class', weights = weights_vec,
                control = rpart.control(cp=best_j, minsplit = best_k))
 
+#ad hoc model
+weights_vec <- rep(1, length(train_data[, 1]))
+weights_vec[train_data$y == 'yes'] <- 1
+model <- rpart(y ~ . -duration, train_data, method = 'class', weights = weights_vec,
+               control = rpart.control(cp=0.0075, minsplit = 9))
 
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-confusion.matrix(testAn, as.numeric(prediction2) - 1, .5)
+confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 
 #score = 1.414
 
@@ -948,9 +886,10 @@ model <- prune(model, model$cptable[which.min(model$cptable[,"xerror"]),"CP"])
 
 prediction2 <- predict(model, test_data, type = 'class')
 mean(prediction2 == test_data$y)
-confusion.matrix(testAn, as.numeric(prediction2) - 1, .5)
+confusion.matrix(test_an, as.numeric(prediction2) - 1, .5)
 
 #score = 1.414
 
 windows()
 rpart.plot(model)
+
