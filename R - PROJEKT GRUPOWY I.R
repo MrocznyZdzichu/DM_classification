@@ -788,10 +788,10 @@ test_data <- basedata_sorted[test_indices,]
 library(rpart)
 library(rpart.plot)
 
-model1 = rpart(y ~ ., train_data, method = 'class')
+model1 = rpart(y ~ .-duration, train_data, method = 'class')
 windows()
 rpart.plot(model1)
-text(model1)
+
 
 
 
